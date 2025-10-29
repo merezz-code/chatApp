@@ -1,0 +1,164 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}Chat avec {{ other_user.username }} - ChatApp{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 500px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+    .message {
+        margin-bottom: 15px;
+        padding: 10px 15px;
+        border-radius: 10px;
+        max-width: 70%;
+    }
+    .message-sent {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-left: auto;
+        text-align: right;
+    }
+    .message-received {
+        background: white;
+        border: 1px solid #dee2e6;
+    }
+    .message-time {
+        font-size: 0.75em;
+        opacity: 0.7;
+        margin-top: 5px;
+    }
+    .message-input {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user"></i> Conversation avec {{ other_user.username }}
+                    </h4>
+                    <a href="{% url 'home' %}" class="btn btn-sm btn-light">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="chat-messages" class="chat-container">
+                    {% for message in messages %}
+                        <div class="message {% if message.sender == user %}message-sent{% else %}message-received{% endif %}">
+                            <div>{{ message.content }}</div>
+                            {% if message.image %}
+                                <div class="mt-2">
+                                    <img src="{{ message.image.url }}" class="img-fluid rounded" style="max-width: 300px;">
+                                </div>
+                            {% endif %}
+                            {% if message.file %}
+                                <div class="mt-2">
+                                    <a href="{{ message.file.url }}" class="btn btn-sm btn-outline-light" download>
+                                        <i class="fas fa-download"></i> {{ message.file.name }}
+                                    </a>
+                                </div>
+                            {% endif %}
+                            <div class="message-time">{{ message.timestamp|date:"d/m/Y H:i" }}</div>
+                        </div>
+                    {% empty %}
+                        <p class="text-center text-muted">
+                            <i class="fas fa-inbox"></i> Aucun message encore. 
+                            Soyez le premier à écrire!
+                        </p>
+                    {% endfor %}
+                </div>
+                
+                <div class="message-input">
+                    <div class="input-group">
+                        <input type="text" id="message-input" class="form-control" 
+                               placeholder="Écrivez un message privé..." autocomplete="off">
+                        <button class="btn btn-success" type="button" id="send-button">
+                            <i class="fas fa-paper-plane"></i> Envoyer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const otherUsername = "{{ other_user.username }}";
+    const currentUsername = "{{ user.username }}";
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/chat/private/${otherUsername}/`;
+    
+    const chatSocket = new WebSocket(wsUrl);
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
+    
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'message') {
+            addMessage(data.sender, data.message, data.timestamp);
+        }
+        
+        scrollToBottom();
+    };
+    
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+    };
+    
+    function addMessage(sender, message, timestamp) {
+        const messageDiv = document.createElement('div');
+        const isSent = sender === currentUsername;
+        messageDiv.className = `message ${isSent ? 'message-sent' : 'message-received'}`;
+        
+        let html = `<div>${message}</div>`;
+        html += `<div class="message-time">${timestamp}</div>`;
+        
+        messageDiv.innerHTML = html;
+        chatMessages.appendChild(messageDiv);
+    }
+    
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function sendMessage() {
+        const message = messageInput.value.trim();
+        if (message) {
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInput.value = '';
+        }
+    }
+    
+    sendButton.onclick = sendMessage;
+    
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    
+    scrollToBottom();
+</script>
+{% endblock %}

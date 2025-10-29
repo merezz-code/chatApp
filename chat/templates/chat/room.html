@@ -1,0 +1,190 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}{{ room.name }} - ChatApp{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 500px;
+        overflow-y: auto;
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+    }
+    .message {
+        margin-bottom: 15px;
+        padding: 10px 15px;
+        border-radius: 10px;
+        max-width: 70%;
+    }
+    .message-sent {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-left: auto;
+        text-align: right;
+    }
+    .message-received {
+        background: white;
+        border: 1px solid #dee2e6;
+    }
+    .message-username {
+        font-weight: bold;
+        font-size: 0.9em;
+        margin-bottom: 5px;
+    }
+    .message-time {
+        font-size: 0.75em;
+        opacity: 0.7;
+        margin-top: 5px;
+    }
+    .message-input {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-hashtag"></i> {{ room.name }}
+                    </h4>
+                    <div>
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-users"></i> <span id="online-count">{{ room.get_online_count }}</span> en ligne
+                        </span>
+                        <a href="{% url 'home' %}" class="btn btn-sm btn-light ms-2">
+                            <i class="fas fa-arrow-left"></i> Retour
+                        </a>
+                    </div>
+                </div>
+                {% if room.description %}
+                    <p class="mb-0 mt-2"><small>{{ room.description }}</small></p>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div id="chat-messages" class="chat-container">
+                    {% for message in messages %}
+                        <div class="message {% if message.user == user %}message-sent{% else %}message-received{% endif %}">
+                            {% if message.user != user %}
+                                <div class="message-username">{{ message.user.username }}</div>
+                            {% endif %}
+                            <div>{{ message.content }}</div>
+                            {% if message.image %}
+                                <div class="mt-2">
+                                    <img src="{{ message.image.url }}" class="img-fluid rounded" style="max-width: 300px;">
+                                </div>
+                            {% endif %}
+                            {% if message.file %}
+                                <div class="mt-2">
+                                    <a href="{{ message.file.url }}" class="btn btn-sm btn-outline-light" download>
+                                        <i class="fas fa-download"></i> {{ message.file.name }}
+                                    </a>
+                                </div>
+                            {% endif %}
+                            <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="message-input">
+                    <div class="input-group">
+                        <input type="text" id="message-input" class="form-control" 
+                               placeholder="Tapez votre message..." autocomplete="off">
+                        <button class="btn btn-primary" type="button" id="send-button">
+                            <i class="fas fa-paper-plane"></i> Envoyer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const roomName = "{{ room.name }}";
+    const username = "{{ user.username }}";
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/chat/room/${roomName}/`;
+    
+    const chatSocket = new WebSocket(wsUrl);
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
+    
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'message') {
+            addMessage(data.username, data.message, data.timestamp);
+        } else if (data.type === 'user_join') {
+            addSystemMessage(data.message);
+        } else if (data.type === 'user_leave') {
+            addSystemMessage(data.message);
+        }
+        
+        scrollToBottom();
+    };
+    
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+    };
+    
+    function addMessage(user, message, timestamp) {
+        const messageDiv = document.createElement('div');
+        const isSent = user === username;
+        messageDiv.className = `message ${isSent ? 'message-sent' : 'message-received'}`;
+        
+        let html = '';
+        if (!isSent) {
+            html += `<div class="message-username">${user}</div>`;
+        }
+        html += `<div>${message}</div>`;
+        html += `<div class="message-time">${timestamp}</div>`;
+        
+        messageDiv.innerHTML = html;
+        chatMessages.appendChild(messageDiv);
+    }
+    
+    function addSystemMessage(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'text-center text-muted my-2';
+        messageDiv.innerHTML = `<small><i>${message}</i></small>`;
+        chatMessages.appendChild(messageDiv);
+    }
+    
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function sendMessage() {
+        const message = messageInput.value.trim();
+        if (message) {
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInput.value = '';
+        }
+    }
+    
+    sendButton.onclick = sendMessage;
+    
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    
+    scrollToBottom();
+</script>
+{% endblock %}
