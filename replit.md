@@ -17,7 +17,11 @@ Application de chat en temps réel construite avec Django et Django Channels. L'
 - ✅ Interface utilisateur moderne avec Bootstrap 5
 - ✅ Support upload de fichiers et images
 - ✅ Workflow Daphne configuré et fonctionnel sur port 5000
-- ✅ Application testée et validée par l'architecte
+- ✅ **NOUVEAU**: Refonte complète du design style WhatsApp avec palette orange
+- ✅ **NOUVEAU**: Thème sombre moderne (dark mode)
+- ✅ **NOUVEAU**: Barre latérale avec liste de conversations
+- ✅ **NOUVEAU**: Bulles de messages style WhatsApp
+- ✅ **NOUVEAU**: Interface responsive et mobile-friendly
 
 ## Features
 - **Authentification**: Inscription et connexion des utilisateurs avec Django Auth
@@ -93,4 +97,6 @@ db.sqlite3           # Base de données SQLite
 
 ## User Preferences
 - Langue: Français
+- Design: Style WhatsApp avec couleur orange (demandé par l'utilisateur)
+- Thème: Dark mode (sombre)
 - Interface responsive et moderne

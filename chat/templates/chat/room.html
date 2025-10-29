@@ -2,109 +2,291 @@
 
 {% block title %}{{ room.name }} - ChatApp{% endblock %}
 
+{% block body_class %}chat-page{% endblock %}
+
 {% block extra_css %}
 <style>
     .chat-container {
-        height: 500px;
-        overflow-y: auto;
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: var(--bg-chat);
+        background-image: 
+            linear-gradient(45deg, rgba(255, 107, 53, 0.02) 25%, transparent 25%),
+            linear-gradient(-45deg, rgba(255, 107, 53, 0.02) 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, rgba(255, 107, 53, 0.02) 75%),
+            linear-gradient(-45deg, transparent 75%, rgba(255, 107, 53, 0.02) 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
     }
-    .message {
-        margin-bottom: 15px;
-        padding: 10px 15px;
-        border-radius: 10px;
-        max-width: 70%;
+    
+    .chat-header {
+        background-color: var(--bg-sidebar);
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 15px;
     }
-    .message-sent {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    
+    .chat-header-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--orange-primary), var(--orange-light));
+        display: flex;
+        align-items: center;
+        justify-content: center;
         color: white;
-        margin-left: auto;
-        text-align: right;
+        font-size: 1.2rem;
     }
-    .message-received {
-        background: white;
-        border: 1px solid #dee2e6;
+    
+    .chat-header-info {
+        flex: 1;
     }
-    .message-username {
-        font-weight: bold;
-        font-size: 0.9em;
-        margin-bottom: 5px;
+    
+    .chat-header-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
     }
+    
+    .chat-header-subtitle {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+    
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .message-wrapper {
+        display: flex;
+        margin-bottom: 8px;
+    }
+    
+    .message-wrapper.sent {
+        justify-content: flex-end;
+    }
+    
+    .message-wrapper.received {
+        justify-content: flex-start;
+    }
+    
+    .message-bubble {
+        max-width: 65%;
+        padding: 8px 12px;
+        border-radius: 8px;
+        position: relative;
+        word-wrap: break-word;
+    }
+    
+    .message-bubble.sent {
+        background-color: var(--bg-message-sent);
+        color: white;
+        border-radius: 8px 8px 0 8px;
+    }
+    
+    .message-bubble.received {
+        background-color: var(--bg-message-received);
+        color: var(--text-primary);
+        border-radius: 8px 8px 8px 0;
+    }
+    
+    .message-sender {
+        font-weight: 600;
+        font-size: 0.875rem;
+        margin-bottom: 4px;
+        color: var(--orange-light);
+    }
+    
+    .message-text {
+        font-size: 0.95rem;
+        line-height: 1.4;
+        margin-bottom: 4px;
+    }
+    
     .message-time {
-        font-size: 0.75em;
+        font-size: 0.7rem;
         opacity: 0.7;
-        margin-top: 5px;
+        text-align: right;
+        margin-top: 4px;
     }
-    .message-input {
-        position: sticky;
-        bottom: 0;
-        background: white;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    
+    .message-bubble.sent .message-time {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .message-bubble.received .message-time {
+        color: var(--text-secondary);
+    }
+    
+    .message-image {
+        max-width: 300px;
+        border-radius: 8px;
+        margin-top: 8px;
+        cursor: pointer;
+    }
+    
+    .system-message {
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        padding: 8px;
+        margin: 10px 0;
+    }
+    
+    .system-message-bubble {
+        display: inline-block;
+        background-color: rgba(255, 107, 53, 0.1);
+        padding: 6px 12px;
+        border-radius: 8px;
+    }
+    
+    .chat-input-container {
+        background-color: var(--bg-sidebar);
+        padding: 15px 20px;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .chat-input-wrapper {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .chat-input {
+        flex: 1;
+        background-color: var(--bg-chat);
+        border: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+    }
+    
+    .chat-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--orange-primary);
+    }
+    
+    .chat-input::placeholder {
+        color: var(--text-secondary);
+    }
+    
+    .btn-send {
+        background-color: var(--orange-primary);
+        border: none;
+        color: white;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+        font-size: 1.2rem;
+    }
+    
+    .btn-send:hover {
+        background-color: var(--orange-dark);
+        transform: scale(1.05);
+    }
+    
+    .btn-send:active {
+        transform: scale(0.95);
+    }
+    
+    .btn-back {
+        background-color: transparent;
+        border: none;
+        color: var(--text-secondary);
+        padding: 8px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    
+    .btn-back:hover {
+        color: var(--text-primary);
+    }
+    
+    .chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .chat-messages::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 3px;
+    }
+    
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">
-                        <i class="fas fa-hashtag"></i> {{ room.name }}
-                    </h4>
-                    <div>
-                        <span class="badge bg-light text-dark">
-                            <i class="fas fa-users"></i> <span id="online-count">{{ room.get_online_count }}</span> en ligne
-                        </span>
-                        <a href="{% url 'home' %}" class="btn btn-sm btn-light ms-2">
-                            <i class="fas fa-arrow-left"></i> Retour
-                        </a>
-                    </div>
-                </div>
-                {% if room.description %}
-                    <p class="mb-0 mt-2"><small>{{ room.description }}</small></p>
-                {% endif %}
+<div class="chat-container">
+    <div class="chat-header">
+        <a href="{% url 'home' %}" class="btn-back">
+            <i class="fas fa-arrow-left fa-lg"></i>
+        </a>
+        <div class="chat-header-avatar">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="chat-header-info">
+            <div class="chat-header-title">{{ room.name }}</div>
+            <div class="chat-header-subtitle">
+                <i class="fas fa-users"></i> <span id="online-count">{{ room.get_online_count }}</span> membres en ligne
             </div>
-            <div class="card-body p-0">
-                <div id="chat-messages" class="chat-container">
-                    {% for message in messages %}
-                        <div class="message {% if message.user == user %}message-sent{% else %}message-received{% endif %}">
-                            {% if message.user != user %}
-                                <div class="message-username">{{ message.user.username }}</div>
-                            {% endif %}
-                            <div>{{ message.content }}</div>
-                            {% if message.image %}
-                                <div class="mt-2">
-                                    <img src="{{ message.image.url }}" class="img-fluid rounded" style="max-width: 300px;">
-                                </div>
-                            {% endif %}
-                            {% if message.file %}
-                                <div class="mt-2">
-                                    <a href="{{ message.file.url }}" class="btn btn-sm btn-outline-light" download>
-                                        <i class="fas fa-download"></i> {{ message.file.name }}
-                                    </a>
-                                </div>
-                            {% endif %}
-                            <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
+        </div>
+    </div>
+    
+    <div id="chat-messages" class="chat-messages">
+        {% for message in messages %}
+            <div class="message-wrapper {% if message.user == user %}sent{% else %}received{% endif %}">
+                <div class="message-bubble {% if message.user == user %}sent{% else %}received{% endif %}">
+                    {% if message.user != user %}
+                        <div class="message-sender">{{ message.user.username }}</div>
+                    {% endif %}
+                    <div class="message-text">{{ message.content }}</div>
+                    {% if message.image %}
+                        <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
+                    {% endif %}
+                    {% if message.file %}
+                        <div class="mt-2">
+                            <a href="{{ message.file.url }}" style="color: inherit;" download>
+                                <i class="fas fa-file"></i> Fichier joint
+                            </a>
                         </div>
-                    {% endfor %}
-                </div>
-                
-                <div class="message-input">
-                    <div class="input-group">
-                        <input type="text" id="message-input" class="form-control" 
-                               placeholder="Tapez votre message..." autocomplete="off">
-                        <button class="btn btn-primary" type="button" id="send-button">
-                            <i class="fas fa-paper-plane"></i> Envoyer
-                        </button>
-                    </div>
+                    {% endif %}
+                    <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
                 </div>
             </div>
+        {% endfor %}
+    </div>
+    
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <input type="text" 
+                   id="message-input" 
+                   class="chat-input" 
+                   placeholder="Tapez un message..."
+                   autocomplete="off">
+            <button class="btn-send" id="send-button" type="button">
+                <i class="fas fa-paper-plane"></i>
+            </button>
         </div>
     </div>
 </div>
@@ -141,26 +323,37 @@
     };
     
     function addMessage(user, message, timestamp) {
-        const messageDiv = document.createElement('div');
         const isSent = user === username;
-        messageDiv.className = `message ${isSent ? 'message-sent' : 'message-received'}`;
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${isSent ? 'sent' : 'received'}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
         
         let html = '';
         if (!isSent) {
-            html += `<div class="message-username">${user}</div>`;
+            html += `<div class="message-sender">${user}</div>`;
         }
-        html += `<div>${message}</div>`;
+        html += `<div class="message-text">${escapeHtml(message)}</div>`;
         html += `<div class="message-time">${timestamp}</div>`;
         
-        messageDiv.innerHTML = html;
-        chatMessages.appendChild(messageDiv);
+        bubble.innerHTML = html;
+        wrapper.appendChild(bubble);
+        chatMessages.appendChild(wrapper);
     }
     
     function addSystemMessage(message) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'text-center text-muted my-2';
-        messageDiv.innerHTML = `<small><i>${message}</i></small>`;
-        chatMessages.appendChild(messageDiv);
+        const div = document.createElement('div');
+        div.className = 'system-message';
+        div.innerHTML = `<span class="system-message-bubble">${escapeHtml(message)}</span>`;
+        chatMessages.appendChild(div);
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     function scrollToBottom() {
@@ -185,6 +378,7 @@
         }
     });
     
+    messageInput.focus();
     scrollToBottom();
 </script>
 {% endblock %}

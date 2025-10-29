@@ -2,34 +2,188 @@
 
 {% block title %}Connexion - ChatApp{% endblock %}
 
+{% block extra_css %}
+<style>
+    .auth-container {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bg-dark);
+    }
+    
+    .auth-card {
+        background-color: var(--bg-sidebar);
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .auth-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .auth-header i {
+        font-size: 3rem;
+        color: var(--orange-primary);
+        margin-bottom: 15px;
+    }
+    
+    .auth-header h2 {
+        color: var(--text-primary);
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    
+    .auth-header p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        background-color: var(--bg-chat);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--orange-primary);
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+    
+    .form-control::placeholder {
+        color: var(--text-secondary);
+    }
+    
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        background-color: var(--orange-primary);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+        margin-top: 10px;
+    }
+    
+    .btn-submit:hover {
+        background-color: var(--orange-dark);
+    }
+    
+    .btn-submit:active {
+        transform: scale(0.98);
+    }
+    
+    .auth-divider {
+        margin: 25px 0;
+        text-align: center;
+        position: relative;
+    }
+    
+    .auth-divider::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 100%;
+        height: 1px;
+        background-color: var(--border-color);
+    }
+    
+    .auth-divider span {
+        background-color: var(--bg-sidebar);
+        padding: 0 15px;
+        position: relative;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+    
+    .auth-link {
+        text-align: center;
+        margin-top: 20px;
+        color: var(--text-secondary);
+    }
+    
+    .auth-link a {
+        color: var(--orange-primary);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s;
+    }
+    
+    .auth-link a:hover {
+        color: var(--orange-light);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="card">
-            <div class="card-body p-5">
-                <h2 class="text-center mb-4">
-                    <i class="fas fa-sign-in-alt"></i> Connexion
-                </h2>
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Nom d'utilisateur</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Mot de passe</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-sign-in-alt"></i> Se connecter
-                    </button>
-                </form>
-                <hr>
-                <p class="text-center mb-0">
-                    Pas encore de compte? 
-                    <a href="{% url 'register' %}">Inscrivez-vous ici</a>
-                </p>
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fas fa-comment-dots"></i>
+            <h2>Connexion</h2>
+            <p>Bienvenue sur ChatApp</p>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username" class="form-label">Nom d'utilisateur</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="username" 
+                       name="username" 
+                       placeholder="Entrez votre nom d'utilisateur"
+                       required 
+                       autofocus>
             </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Mot de passe</label>
+                <input type="password" 
+                       class="form-control" 
+                       id="password" 
+                       name="password" 
+                       placeholder="Entrez votre mot de passe"
+                       required>
+            </div>
+            
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-sign-in-alt"></i> Se connecter
+            </button>
+        </form>
+        
+        <div class="auth-divider">
+            <span>OU</span>
+        </div>
+        
+        <div class="auth-link">
+            Pas encore de compte? 
+            <a href="{% url 'register' %}">Inscrivez-vous ici</a>
         </div>
     </div>
 </div>

@@ -1,75 +1,267 @@
 {% extends 'chat/base.html' %}
 
-{% block title %}Accueil - ChatApp{% endblock %}
+{% block title %}ChatApp - Accueil{% endblock %}
+
+{% block body_class %}chat-page{% endblock %}
+
+{% block extra_css %}
+<style>
+    .whatsapp-container {
+        display: flex;
+        height: 100%;
+        background-color: var(--bg-dark);
+    }
+    
+    .sidebar {
+        width: 400px;
+        background-color: var(--bg-sidebar);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .sidebar-header {
+        padding: 15px 20px;
+        background-color: var(--bg-sidebar);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .sidebar-header h5 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 1.2rem;
+    }
+    
+    .btn-new-chat {
+        background-color: transparent;
+        border: none;
+        color: var(--orange-primary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    
+    .btn-new-chat:hover {
+        transform: scale(1.1);
+    }
+    
+    .chat-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    .chat-item {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: background-color 0.2s;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .chat-item:hover {
+        background-color: var(--bg-chat);
+    }
+    
+    .chat-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--orange-primary), var(--orange-light));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        flex-shrink: 0;
+    }
+    
+    .chat-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .chat-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 1rem;
+        margin-bottom: 5px;
+    }
+    
+    .chat-description {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .chat-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+    }
+    
+    .chat-time {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+    }
+    
+    .chat-badge {
+        background-color: var(--orange-primary);
+        color: white;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .main-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bg-chat);
+        background-image: 
+            linear-gradient(45deg, rgba(255, 107, 53, 0.02) 25%, transparent 25%),
+            linear-gradient(-45deg, rgba(255, 107, 53, 0.02) 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, rgba(255, 107, 53, 0.02) 75%),
+            linear-gradient(-45deg, transparent 75%, rgba(255, 107, 53, 0.02) 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    
+    .welcome-message {
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    
+    .welcome-message i {
+        font-size: 5rem;
+        color: var(--orange-primary);
+        margin-bottom: 20px;
+    }
+    
+    .welcome-message h3 {
+        color: var(--text-primary);
+        margin-bottom: 10px;
+    }
+    
+    .section-divider {
+        padding: 10px 20px;
+        background-color: var(--bg-chat);
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    
+    .status-online {
+        color: #25D366;
+    }
+    
+    .status-offline {
+        color: var(--text-secondary);
+    }
+    
+    @media (max-width: 768px) {
+        .sidebar {
+            width: 100%;
+        }
+        .main-content {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">
-                    <i class="fas fa-door-open"></i> Salons de Discussion
-                </h4>
-            </div>
-            <div class="card-body">
-                {% if rooms %}
-                    <div class="list-group">
-                        {% for room in rooms %}
-                            <a href="{% url 'room_detail' room.name %}" class="list-group-item list-group-item-action">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h5 class="mb-1">
-                                        <i class="fas fa-hashtag"></i> {{ room.name }}
-                                    </h5>
-                                    <small>
-                                        <i class="fas fa-users"></i> 
-                                        {{ room.get_online_count }} membres
-                                    </small>
-                                </div>
-                                <p class="mb-1">{{ room.description|truncatewords:20 }}</p>
-                                <small class="text-muted">
-                                    Créé par {{ room.created_by.username }} le {{ room.created_at|date:"d/m/Y" }}
-                                </small>
-                            </a>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-center text-muted">
-                        <i class="fas fa-inbox"></i> Aucun salon disponible. 
-                        <a href="{% url 'create_room' %}">Créez le premier!</a>
-                    </p>
-                {% endif %}
-            </div>
+<div class="whatsapp-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h5><i class="fas fa-comments"></i> Conversations</h5>
+            <a href="{% url 'create_room' %}" class="btn-new-chat" title="Nouveau salon">
+                <i class="fas fa-plus-circle"></i>
+            </a>
+        </div>
+        
+        <div class="chat-list">
+            {% if rooms %}
+                <div class="section-divider">
+                    <i class="fas fa-hashtag"></i> SALONS DE DISCUSSION
+                </div>
+                {% for room in rooms %}
+                    <a href="{% url 'room_detail' room.name %}" class="chat-item">
+                        <div class="chat-avatar">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="chat-info">
+                            <div class="chat-name">{{ room.name }}</div>
+                            <div class="chat-description">
+                                {{ room.description|default:"Aucune description"|truncatewords:8 }}
+                            </div>
+                        </div>
+                        <div class="chat-meta">
+                            <div class="chat-time">{{ room.created_at|date:"d/m/Y" }}</div>
+                            <div class="chat-badge">{{ room.get_online_count }}</div>
+                        </div>
+                    </a>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox fa-3x mb-3" style="color: var(--text-secondary);"></i>
+                    <p>Aucun salon disponible</p>
+                    <a href="{% url 'create_room' %}" class="btn btn-orange btn-sm mt-2">
+                        <i class="fas fa-plus"></i> Créer un salon
+                    </a>
+                </div>
+            {% endif %}
+            
+            {% if users %}
+                <div class="section-divider">
+                    <i class="fas fa-user"></i> MESSAGES PRIVÉS
+                </div>
+                {% for user_item in users %}
+                    <a href="{% url 'private_chat' user_item.username %}" class="chat-item">
+                        <div class="chat-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="chat-info">
+                            <div class="chat-name">{{ user_item.username }}</div>
+                            <div class="chat-description">
+                                {% if user_item.profile.is_online %}
+                                    <span class="status-online">
+                                        <i class="fas fa-circle" style="font-size: 0.6rem;"></i> En ligne
+                                    </span>
+                                {% else %}
+                                    <span class="status-offline">Hors ligne</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            {% endif %}
         </div>
     </div>
     
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-user-friends"></i> Utilisateurs
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if users %}
-                    <div class="list-group">
-                        {% for user_item in users %}
-                            <a href="{% url 'private_chat' user_item.username %}" 
-                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                <span>
-                                    <i class="fas fa-user"></i> {{ user_item.username }}
-                                </span>
-                                {% if user_item.profile.is_online %}
-                                    <span class="badge bg-success rounded-pill">En ligne</span>
-                                {% else %}
-                                    <span class="badge bg-secondary rounded-pill">Hors ligne</span>
-                                {% endif %}
-                            </a>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-center text-muted">Aucun autre utilisateur</p>
-                {% endif %}
-            </div>
+    <div class="main-content">
+        <div class="welcome-message">
+            <i class="fas fa-comment-dots"></i>
+            <h3>Bienvenue sur ChatApp</h3>
+            <p>Sélectionnez une conversation pour commencer à discuter</p>
         </div>
     </div>
 </div>

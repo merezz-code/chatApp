@@ -2,39 +2,169 @@
 
 {% block title %}Créer un Salon - ChatApp{% endblock %}
 
+{% block extra_css %}
+<style>
+    .auth-container {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bg-dark);
+        padding: 20px;
+    }
+    
+    .auth-card {
+        background-color: var(--bg-sidebar);
+        border-radius: 12px;
+        padding: 40px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .auth-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .auth-header i {
+        font-size: 3rem;
+        color: var(--orange-primary);
+        margin-bottom: 15px;
+    }
+    
+    .auth-header h2 {
+        color: var(--text-primary);
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    
+    .auth-header p {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        background-color: var(--bg-chat);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--orange-primary);
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+    
+    .form-control::placeholder {
+        color: var(--text-secondary);
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+    }
+    
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        background-color: var(--orange-primary);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+        margin-top: 10px;
+    }
+    
+    .btn-submit:hover {
+        background-color: var(--orange-dark);
+    }
+    
+    .btn-submit:active {
+        transform: scale(0.98);
+    }
+    
+    .btn-cancel {
+        width: 100%;
+        padding: 14px;
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 10px;
+        text-align: center;
+        display: block;
+        text-decoration: none;
+    }
+    
+    .btn-cancel:hover {
+        border-color: var(--text-secondary);
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">
-                    <i class="fas fa-plus-circle"></i> Créer un Nouveau Salon
-                </h4>
-            </div>
-            <div class="card-body p-4">
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Nom du Salon</label>
-                        <input type="text" class="form-control" id="name" name="name" 
-                               placeholder="Ex: General, Gaming, Tech..." required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" 
-                                  rows="3" placeholder="Décrivez votre salon..."></textarea>
-                    </div>
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Créer le Salon
-                        </button>
-                        <a href="{% url 'home' %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Annuler
-                        </a>
-                    </div>
-                </form>
-            </div>
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fas fa-plus-circle"></i>
+            <h2>Créer un Salon</h2>
+            <p>Commencez une nouvelle conversation de groupe</p>
         </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="name" class="form-label">Nom du Salon</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="name" 
+                       name="name" 
+                       placeholder="Ex: Gaming, Tech, Général..."
+                       required 
+                       autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="description" class="form-label">Description (optionnel)</label>
+                <textarea class="form-control" 
+                          id="description" 
+                          name="description" 
+                          placeholder="Décrivez votre salon..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-plus"></i> Créer le Salon
+            </button>
+            
+            <a href="{% url 'home' %}" class="btn-cancel">
+                <i class="fas fa-arrow-left"></i> Annuler
+            </a>
+        </form>
     </div>
 </div>
 {% endblock %}
