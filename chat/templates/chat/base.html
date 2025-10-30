@@ -8,80 +8,81 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --orange-primary: #FF6B35;
-            --orange-dark: #E85D2C;
-            --orange-light: #FF8C5A;
-            --bg-dark: #111B21;
-            --bg-chat: #0B141A;
-            --bg-sidebar: #202C33;
-            --bg-message-sent: #FF6B35;
-            --bg-message-received: #202C33;
-            --text-primary: #E9EDEF;
-            --text-secondary: #8696A0;
-            --border-color: #2A3942;
+            /* 🎨 Palette douce : rose pastel et violet clair */
+            --orange-primary: #C67ACE;   /* violet rosé */
+            --orange-dark: #B05AB5;      /* violet un peu plus foncé */
+            --orange-light: #E8A9E6;     /* rose clair */
+            --bg-dark: #FFFFFF;          /* fond blanc */
+            --bg-chat: #F8F3FA;          /* très léger violet pâle */
+            --bg-sidebar: #F0E6F5;       /* violet clair */
+            --bg-message-sent: #C67ACE;  /* même couleur principale */
+            --bg-message-received: #EADCF2; /* violet pastel */
+            --text-primary: #2C1A35;     /* texte violet foncé */
+            --text-secondary: #6A5B7E;   /* texte doux */
+            --border-color: #D6C6E3;     /* bordures lilas clair */
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             background-color: var(--bg-dark);
             color: var(--text-primary);
             font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
             min-height: 100vh;
         }
-        
+
         body.chat-page {
             height: 100vh;
             overflow: hidden;
         }
-        
+
         .main-wrapper {
             min-height: calc(100vh - 60px);
         }
-        
+
         .chat-page .main-wrapper {
             height: calc(100vh - 60px);
             overflow: hidden;
         }
-        
+
         .navbar {
             background-color: var(--bg-sidebar) !important;
             border-bottom: 1px solid var(--border-color);
             padding: 10px 20px;
             height: 60px;
         }
-        
+
         .navbar-toggler {
             border-color: var(--orange-primary);
         }
-        
+
         .navbar-toggler-icon {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23FF6B35' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23C67ACE' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
         }
-        
+
         .navbar-brand {
             color: var(--orange-primary) !important;
             font-weight: bold;
             font-size: 1.3rem;
         }
-        
+
         .navbar-brand i {
             color: var(--orange-primary);
         }
-        
+
         .nav-link {
             color: var(--text-secondary) !important;
             transition: color 0.2s;
         }
-        
+
         .nav-link:hover {
             color: var(--text-primary) !important;
         }
-        
+
         .btn-orange {
             background-color: var(--orange-primary);
             color: white;
@@ -90,34 +91,34 @@
             border-radius: 8px;
             transition: background-color 0.2s;
         }
-        
+
         .btn-orange:hover {
             background-color: var(--orange-dark);
             color: white;
         }
-        
+
         .alert {
             border-radius: 8px;
             border: none;
         }
-        
+
         .alert-success {
-            background-color: rgba(255, 107, 53, 0.2);
-            color: var(--orange-light);
+            background-color: rgba(198, 122, 206, 0.2);
+            color: var(--orange-dark);
         }
-        
+
         .alert-error, .alert-danger {
-            background-color: rgba(234, 67, 53, 0.2);
-            color: #EA4335;
+            background-color: rgba(224, 102, 102, 0.15);
+            color: #D64545;
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'home' %}">
-                <i class="fas fa-comment-dots"></i> ChatApp
+                <i class="fas fa-comment-dots"></i> MNS ChatApp
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>

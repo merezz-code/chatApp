@@ -1,0 +1,59 @@
+{% extends 'chat/base.html' %}
+
+{% block title %}Bienvenue - MNS Chat App{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <i class="fas fa-comments fa-4x text-primary mb-4"></i>
+                <h1 class="display-4 mb-4">Bienvenue sur MNS Chat</h1>
+                <p class="lead mb-5">
+                    Rejoignez notre communauté et discutez en temps réel avec d'autres utilisateurs.
+                    Créez vos propres salons de discussion et partagez vos idées instantanément.
+                </p>
+                
+                <div class="row mb-5">
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-bolt fa-2x text-warning mb-3"></i>
+                                <h5>Messages instantanés</h5>
+                                <p class="text-muted">Communication en temps réel avec WebSocket</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-users fa-2x text-success mb-3"></i>
+                                <h5>Salons de discussion</h5>
+                                <p class="text-muted">Créez et rejoignez des groupes de discussion</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-shield-alt fa-2x text-info mb-3"></i>
+                                <h5>Sécurisé</h5>
+                                <p class="text-muted">Authentification et gestion des membres</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                    <a href="{% url 'chat:login' %}" class="btn btn-primary btn-lg me-md-2">
+                        <i class="fas fa-sign-in-alt"></i> Se connecter
+                    </a>
+                    <a href="{% url 'chat:register' %}" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-user-plus"></i> S'inscrire
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
