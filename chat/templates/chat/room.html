@@ -6,6 +6,40 @@
 
 {% block extra_css %}
 <style>
+
+.chat-input-wrapper {
+    display: flex; /* Utiliser Flexbox pour aligner les éléments */
+    align-items: center;
+    padding: 10px;
+    border-top: 1px solid var(--border-color); /* Séparateur */
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--text-secondary); /* Couleur discrète pour les icônes */
+    cursor: pointer;
+    padding: 0 8px; /* Espace autour du bouton */
+    font-size: 1.2rem;
+    transition: color 0.2s;
+}
+
+.btn-icon:hover {
+    color: var(--orange-dark); /* Rendre l'icône plus visible au survol */
+}
+
+/* S'assurer que le champ de saisie prend tout l'espace restant */
+.chat-input {
+    flex-grow: 1; /* Permet au champ de prendre l'espace */
+    margin: 0 10px; /* Espace entre les boutons et le champ */
+}
+
+/* Le label pour l'upload doit ressembler à un bouton */
+.file-upload-label {
+    /* Le label hérite de btn-icon */
+    margin-right: 5px; /* Petit espace avant le bouton d'envoi */
+    line-height: 1; /* Assurer un alignement parfait */
+}
     .chat-container {
         display: flex;
         flex-direction: column;
@@ -277,18 +311,39 @@
         {% endfor %}
     </div>
     
-    <div class="chat-input-container">
-        <div class="chat-input-wrapper">
-            <input type="text" 
-                   id="message-input" 
-                   class="chat-input" 
-                   placeholder="Tapez un message..."
-                   autocomplete="off">
-            <button class="btn-send" id="send-button" type="button">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
+<div class="chat-input-container">
+    <div class="chat-input-wrapper">
+
+      <button class="btn-icon emoji-button" id="emoji-button" type="button" title="Emojis">
+      <i class="far fa-smile"></i>
+    </button>
+
+    <!-- Fenêtre du sélecteur d’emojis -->
+    <emoji-picker id="emoji-picker"
+                  style="display:none; position:absolute; bottom:70px; left:60px; z-index:1000;">
+    </emoji-picker>
+
+        <label for="file-upload" class="btn-icon file-upload-label" title="Joindre Fichier ou Image">
+            <i class="fas fa-paperclip"></i>
+        </label>
+        <input type="file"
+               id="file-upload"
+               class="file-input"
+               accept="image/*, .pdf, .zip, .docx"
+               hidden>
+
+        <input type="text"
+               id="message-input"
+               class="chat-input"
+               placeholder="Tapez un message..."
+               autocomplete="off">
+
+        <button class="btn-send" id="send-button" type="button" title="Envoyer">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+
     </div>
+</div>
 </div>
 {% endblock %}
 
@@ -380,5 +435,22 @@
     
     messageInput.focus();
     scrollToBottom();
+    // === Ouvrir / fermer le sélecteur d’emojis ===
+    const emojiButton = document.getElementById('emoji-button');
+    const emojiPicker = document.getElementById('emoji-picker');
+
+    emojiButton.addEventListener('click', () => {
+      emojiPicker.style.display =
+        (emojiPicker.style.display === 'none' || emojiPicker.style.display === '')
+        ? 'block'
+        : 'none';
+    });
+    const picker = document.getElementById('emoji-picker');
+    picker.addEventListener('emoji-click', event => {
+      messageInput.value += event.detail.unicode;
+    });
+
+
+
 </script>
 {% endblock %}
