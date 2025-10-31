@@ -259,29 +259,71 @@
     .chat-messages::-webkit-scrollbar-thumb:hover {
         background: var(--text-secondary);
     }
+    .chat-header-menu {
+    position: relative;
+    margin-left: auto;
+}
+
+.menu-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 30px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 100;
+    min-width: 150px;
+}
+
+.menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.menu-item:hover {
+    background-color: #f2f2f2;
+}
+
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="chat-container">
-    <div class="chat-header">
-        <a href="{% url 'home' %}" class="btn-back">
-            <i class="fas fa-arrow-left fa-lg"></i>
-        </a>
-        <div class="chat-header-avatar">
-            <i class="fas fa-user"></i>
-        </div>
-        <div class="chat-header-info">
-            <div class="chat-header-title">{{ other_user.username }}</div>
-            <div class="chat-header-subtitle">
-                {% if other_user.profile.is_online %}
-                    <i class="fas fa-circle" style="font-size: 0.6rem; color: #25D366;"></i> En ligne
-                {% else %}
-                    Hors ligne
-                {% endif %}
-            </div>
+<div class="chat-header">
+    <a href="{% url 'home' %}" class="btn-back">
+        <i class="fas fa-arrow-left fa-lg"></i>
+    </a>
+    <div class="chat-header-avatar">
+        <i class="fas fa-user"></i>
+    </div>
+    <div class="chat-header-info">
+        <div class="chat-header-title">{{ other_user.username }}</div>
+        <div class="chat-header-subtitle">
+            {% if other_user.profile.is_online %}
+                <i class="fas fa-circle" style="font-size: 0.6rem; color: #25D366;"></i> En ligne
+            {% else %}
+                Hors ligne
+            {% endif %}
         </div>
     </div>
+
+    <!-- Menu trois points -->
+    <div class="chat-header-menu">
+        <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
+        <div class="menu-dropdown" id="menuDropdown">
+            {% if room.is_group %}
+                <div class="menu-item" onclick="leaveGroup({{ room.id }})">Quitter le groupe</div>
+            {% else %}
+                <div class="menu-item" onclick="blockUser({{ other_user.id }})">Bloquer</div>
+            {% endif %}
+            <div class="menu-item" onclick="reportChat({{ room.id }})">Signaler</div>
+        </div>
+    </div>
+</div>
+
     
     <div id="chat-messages" class="chat-messages">
         {% if messages %}
@@ -323,13 +365,17 @@
                           style="display:none; position:absolute; bottom:70px; left:60px; z-index:1000;">
             </emoji-picker>
             <label for="file-upload" class="btn-icon file-upload-label" title="Joindre Fichier ou Image">
-                 <i class="fas fa-paperclip"></i>
-            </label>
-            <input type="file"
+            <i class="fas fa-paperclip"></i>
+        </label>
+        <input type="file"
                id="file-upload"
                class="file-input"
                accept="image/*, .pdf, .zip, .docx"
                hidden>
+         <div id="file-preview"></div>
+
+        <div id="file-preview" style="margin-top: 8px; max-height: 100px; overflow-y: auto;"></div>
+
 
             <input type="text" 
                    id="message-input" 
@@ -444,6 +490,82 @@ emojiPicker.addEventListener('emoji-click', event => {
     messageInput.value += event.detail.unicode;
     messageInput.focus();
 });
+const fileInput = document.getElementById('file-upload');
+const filePreview = document.getElementById('file-preview');
+
+let selectedFile = null;
+
+// Affichage du fichier sélectionné
+fileInput.addEventListener('change', function() {
+    filePreview.innerHTML = '';
+    selectedFile = this.files[0];
+    if (!selectedFile) return;
+
+    const p = document.createElement('p');
+    p.textContent = '📎 ' + selectedFile.name;
+    filePreview.appendChild(p);
+
+    if (selectedFile.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(selectedFile);
+        img.style.maxWidth = '100px';
+        img.style.maxHeight = '80px';
+        img.style.marginTop = '4px';
+        filePreview.appendChild(img);
+    }
+});
+
+// Fonction pour envoyer message + fichier
+function sendMessage() {
+    const messageText = messageInput.value.trim();
+
+    // Création de FormData pour l'upload si fichier
+    if (selectedFile) {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('room', roomName);
+
+        fetch("{% url 'upload_file' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Envoyer aussi le texte si présent
+                if(messageText){
+                    chatSocket.send(JSON.stringify({'message': messageText}));
+                }
+                selectedFile = null;
+                filePreview.innerHTML = '';
+                messageInput.value = '';
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => console.error(err));
+    } else if(messageText) {
+        chatSocket.send(JSON.stringify({'message': messageText}));
+        messageInput.value = '';
+    }
+}
+const menuToggle = document.getElementById('menuToggle');
+const menuDropdown = document.getElementById('menuDropdown');
+
+menuToggle.addEventListener('click', () => {
+    menuDropdown.style.display = menuDropdown.style.display === 'block' ? 'none' : 'block';
+});
+
+// Fermer le menu si on clique ailleurs
+document.addEventListener('click', (e) => {
+    if (!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) {
+        menuDropdown.style.display = 'none';
+    }
+});
+
 </script>
 
 {% endblock %}
