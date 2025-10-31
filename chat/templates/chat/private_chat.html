@@ -6,6 +6,39 @@
 
 {% block extra_css %}
 <style>
+.chat-input-wrapper {
+    display: flex; /* Utiliser Flexbox pour aligner les éléments */
+    align-items: center;
+    padding: 10px;
+    border-top: 0px solid var(--border-color); /* Séparateur */
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--text-secondary); /* Couleur discrète pour les icônes */
+    cursor: pointer;
+    padding: 0 8px; /* Espace autour du bouton */
+    font-size: 1.2rem;
+    transition: color 0.2s;
+}
+
+.btn-icon:hover {
+    color: var(--orange-dark); /* Rendre l'icône plus visible au survol */
+}
+
+/* S'assurer que le champ de saisie prend tout l'espace restant */
+.chat-input {
+    flex-grow: 1; /* Permet au champ de prendre l'espace */
+    margin: 0 10px; /* Espace entre les boutons et le champ */
+}
+
+/* Le label pour l'upload doit ressembler à un bouton */
+.file-upload-label {
+    /* Le label hérite de btn-icon */
+    margin-right: 5px; /* Petit espace avant le bouton d'envoi */
+    line-height: 1; /* Assurer un alignement parfait */
+}
     .chat-container {
         display: flex;
         flex-direction: column;
@@ -21,7 +54,7 @@
     }
     
     .chat-header {
-        background-color: var(--bg-sidebar);
+        background-color: var(--bg-dark);
         padding: 15px 20px;
         border-bottom: 1px solid var(--border-color);
         display: flex;
@@ -128,7 +161,7 @@
     }
     
     .chat-input-container {
-        background-color: var(--bg-sidebar);
+        background-color: var(--bg-dark);
         padding: 15px 20px;
         border-top: 1px solid var(--border-color);
     }
@@ -282,6 +315,22 @@
     
     <div class="chat-input-container">
         <div class="chat-input-wrapper">
+            <button class="btn-icon emoji-button" id="emoji-button" type="button" title="Emojis">
+              <i class="far fa-smile"></i>
+            </button>
+
+            <emoji-picker id="emoji-picker"
+                          style="display:none; position:absolute; bottom:70px; left:60px; z-index:1000;">
+            </emoji-picker>
+            <label for="file-upload" class="btn-icon file-upload-label" title="Joindre Fichier ou Image">
+                 <i class="fas fa-paperclip"></i>
+            </label>
+            <input type="file"
+               id="file-upload"
+               class="file-input"
+               accept="image/*, .pdf, .zip, .docx"
+               hidden>
+
             <input type="text" 
                    id="message-input" 
                    class="chat-input" 
@@ -297,76 +346,104 @@
 
 {% block extra_js %}
 <script>
-    const otherUsername = "{{ other_user.username }}";
-    const currentUsername = "{{ user.username }}";
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/private/${otherUsername}/`;
-    
-    const chatSocket = new WebSocket(wsUrl);
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
-    const chatMessages = document.getElementById('chat-messages');
-    
-    chatSocket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        
-        if (data.type === 'message') {
-            addMessage(data.sender, data.message, data.timestamp);
-        }
-        
+const otherUsername = "{{ other_user.username }}";
+const currentUsername = "{{ user.username }}";
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}/ws/chat/private/${otherUsername}/`;
+
+const chatSocket = new WebSocket(wsUrl);
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const chatMessages = document.getElementById('chat-messages');
+const emojiButton = document.getElementById('emoji-button');
+const emojiPicker = document.getElementById('emoji-picker');
+
+// === Réception des messages ===
+chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if (data.type === 'message') {
+        addMessage(data.sender, data.message, data.timestamp);
         scrollToBottom();
-    };
-    
-    chatSocket.onclose = function(e) {
-        console.error('Chat socket closed unexpectedly');
-    };
-    
-    function addMessage(sender, message, timestamp) {
-        const isSent = sender === currentUsername;
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper ${isSent ? 'sent' : 'received'}`;
-        
-        const bubble = document.createElement('div');
-        bubble.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
-        
-        let html = `<div class="message-text">${escapeHtml(message)}</div>`;
-        html += `<div class="message-time">${timestamp}</div>`;
-        
-        bubble.innerHTML = html;
-        wrapper.appendChild(bubble);
-        chatMessages.appendChild(wrapper);
     }
-    
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+};
+
+// === Gestion fermeture WebSocket ===
+chatSocket.onclose = function() {
+    console.error('Chat socket closed unexpectedly');
+};
+
+// === Ajout d’un message dans le DOM ===
+function addMessage(sender, message, timestamp) {
+    const isSent = sender === currentUsername;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${isSent ? 'sent' : 'received'}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
+
+    // Affiche le nom uniquement pour les messages reçus
+    let html = '';
+    if (!isSent) {
+        html += `<div class="message-sender" style="font-weight:600; font-size:0.85rem; margin-bottom:2px;">${escapeHtml(sender)}</div>`;
     }
-    
-    function scrollToBottom() {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    html += `<div class="message-text">${escapeHtml(message)}</div>`;
+    html += `<div class="message-time">${timestamp}</div>`;
+
+    bubble.innerHTML = html;
+    wrapper.appendChild(bubble);
+    chatMessages.appendChild(wrapper);
+
+    // Animation douce à l’apparition
+    bubble.animate(
+        [
+            { transform: 'scale(0.9)', opacity: 0.5 },
+            { transform: 'scale(1)', opacity: 1 }
+        ],
+        { duration: 180, easing: 'ease-out' }
+    );
+}
+
+// === Échappement HTML ===
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// === Scroll automatique ===
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// === Envoi de message ===
+function sendMessage() {
+    const message = messageInput.value.trim();
+    if (message) {
+        chatSocket.send(JSON.stringify({ message }));
+        messageInput.value = '';
     }
-    
-    function sendMessage() {
-        const message = messageInput.value.trim();
-        if (message) {
-            chatSocket.send(JSON.stringify({
-                'message': message
-            }));
-            messageInput.value = '';
-        }
-    }
-    
-    sendButton.onclick = sendMessage;
-    
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
-    
+}
+
+// === Événements ===
+sendButton.onclick = sendMessage;
+messageInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') sendMessage();
+});
+
+// === Focus et scroll initial ===
+messageInput.focus();
+scrollToBottom();
+
+// === Emoji picker ===
+emojiButton.addEventListener('click', () => {
+    emojiPicker.style.display = (emojiPicker.style.display === 'none' || emojiPicker.style.display === '') ? 'block' : 'none';
+});
+emojiPicker.addEventListener('emoji-click', event => {
+    messageInput.value += event.detail.unicode;
     messageInput.focus();
-    scrollToBottom();
+});
 </script>
+
 {% endblock %}

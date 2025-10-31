@@ -11,7 +11,7 @@
     display: flex; /* Utiliser Flexbox pour aligner les éléments */
     align-items: center;
     padding: 10px;
-    border-top: 1px solid var(--border-color); /* Séparateur */
+    border-top: 0px solid var(--border-color); /* Séparateur */
 }
 
 .btn-icon {
@@ -55,7 +55,7 @@
     }
     
     .chat-header {
-        background-color: var(--bg-sidebar);
+        background-color: var(--bg-dark);
         padding: 15px 20px;
         border-bottom: 1px solid var(--border-color);
         display: flex;
@@ -184,7 +184,7 @@
     }
     
     .chat-input-container {
-        background-color: var(--bg-sidebar);
+        background-color: var(--bg-dark);
         padding: 15px 20px;
         border-top: 1px solid var(--border-color);
     }
@@ -331,6 +331,9 @@
                class="file-input"
                accept="image/*, .pdf, .zip, .docx"
                hidden>
+         <div id="file-preview"></div>
+
+        <div id="file-preview" style="margin-top: 8px; max-height: 100px; overflow-y: auto;"></div>
 
         <input type="text"
                id="message-input"
@@ -435,7 +438,7 @@
     
     messageInput.focus();
     scrollToBottom();
-    // === Ouvrir / fermer le sélecteur d’emojis ===
+
     const emojiButton = document.getElementById('emoji-button');
     const emojiPicker = document.getElementById('emoji-picker');
 
@@ -449,6 +452,69 @@
     picker.addEventListener('emoji-click', event => {
       messageInput.value += event.detail.unicode;
     });
+    const fileInput = document.getElementById('file-upload');
+const filePreview = document.getElementById('file-preview');
+
+let selectedFile = null;
+
+// Affichage du fichier sélectionné
+fileInput.addEventListener('change', function() {
+    filePreview.innerHTML = '';
+    selectedFile = this.files[0];
+    if (!selectedFile) return;
+
+    const p = document.createElement('p');
+    p.textContent = '📎 ' + selectedFile.name;
+    filePreview.appendChild(p);
+
+    if (selectedFile.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(selectedFile);
+        img.style.maxWidth = '100px';
+        img.style.maxHeight = '80px';
+        img.style.marginTop = '4px';
+        filePreview.appendChild(img);
+    }
+});
+
+// Fonction pour envoyer message + fichier
+function sendMessage() {
+    const messageText = messageInput.value.trim();
+
+    // Création de FormData pour l'upload si fichier
+    if (selectedFile) {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('room', roomName);
+
+        fetch("{% url 'upload_file' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Envoyer aussi le texte si présent
+                if(messageText){
+                    chatSocket.send(JSON.stringify({'message': messageText}));
+                }
+                selectedFile = null;
+                filePreview.innerHTML = '';
+                messageInput.value = '';
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => console.error(err));
+    } else if(messageText) {
+        chatSocket.send(JSON.stringify({'message': messageText}));
+        messageInput.value = '';
+    }
+}
+
 
 
 

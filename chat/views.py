@@ -63,15 +63,6 @@ def home(request):
     })
 
 
-def welcome(request):
-    """Affiche la page de bienvenue pour les utilisateurs non connectés."""
-    # Si l'utilisateur est déjà connecté, on le redirige vers sa page d'accueil sécurisée.
-    if request.user.is_authenticated:
-        return redirect('home')
-        # Note : Si vous n'utilisez pas de namespace, 'home' est le nom correct ici.
-
-    return render(request, 'chat/welcome.html')
-
 @login_required
 def room_detail(request, room_name):
     """Page de détail d'un salon de discussion"""
