@@ -1,0 +1,13 @@
+{% extends 'chat/base.html' %}
+{% block title %}Choisir un utilisateur{% endblock %}
+
+{% block content %}
+<h3>Choisir un utilisateur pour démarrer un chat privé</h3>
+<ul>
+    {% for user in users_not_chatted %}
+        <li>
+            <a href="{% url 'private_chat' user.username %}">{{ user.username }}</a>
+        </li>
+    {% endfor %}
+</ul>
+{% endblock %}
