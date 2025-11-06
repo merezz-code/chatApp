@@ -58,6 +58,9 @@ def home(request):
 
     # Tous les salons existants
     rooms = Room.objects.all().order_by('-created_at')
+    user_rooms = Room.objects.filter(
+        messages__user=request.user
+    ).distinct()
 
     # Tous les chats privés de l'utilisateur (exemple si tu as une relation)
     # Ici, on prend les utilisateurs avec qui il a déjà discuté
@@ -70,6 +73,7 @@ def home(request):
 
     context = {
         'rooms': rooms,
+        'user_rooms': user_rooms,
         'private_chats': user_chats,
         'users_not_chatted': users_not_chatted,
     }
