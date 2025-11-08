@@ -3,6 +3,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import User
 from .models import Room, Message, PrivateMessage
+from django.utils.text import slugify
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -10,22 +11,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = f'chat_{self.room_name}'
+        safe_room_name = slugify(self.room_name)
+        self.room_group_name = f'chat_{safe_room_name}'
         self.user = self.scope['user']
         
         if not self.user.is_authenticated:
             await self.close()
             return
-        
+
+        self.room = await self.get_room()
+
+        if self.room is None:
+            print(f"ERREUR: Salon '{self.room_name}' non trouvé. Connexion refusée.")
+            await self.close()
+            return
+
+        await self.accept()
+
+        #On ajoute le canal au groupe
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
-        
-        await self.accept()
-        
         await self.add_user_to_room()
-        
+
+        # envoie le message de bienvenue
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -34,11 +44,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message': f'{self.user.username} a rejoint le salon'
             }
         )
-    
+
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
-            await self.remove_user_from_room()
-            
+
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -86,30 +95,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
     
     async def user_leave(self, event):
+        print(f"--- LOG SERVEUR (user_leave) ---: Événement reçu: {event}")
         await self.send(text_data=json.dumps({
             'type': 'user_leave',
             'username': event['username'],
             'message': event['message']
         }))
-    
+
+    @database_sync_to_async
+    def get_room(self):
+        """
+        Récupère le salon en ignorant la casse.
+        """
+        return Room.objects.filter(name__iexact=self.room_name).first()
+
     @database_sync_to_async
     def save_message(self, message_content):
-        room = Room.objects.get(name=self.room_name)
-        Message.objects.create(
-            room=room,
-            user=self.user,
-            content=message_content
-        )
-    
+        """
+        Utilise self.room (défini dans connect)
+        """
+        if self.room:
+            Message.objects.create(
+                room=self.room,
+                user=self.user,
+                content=message_content
+            )
+
     @database_sync_to_async
     def add_user_to_room(self):
-        room = Room.objects.get(name=self.room_name)
-        room.members.add(self.user)
-    
+        if self.room:
+            self.room.members.add(self.user)
+
     @database_sync_to_async
     def remove_user_from_room(self):
-        room = Room.objects.get(name=self.room_name)
-        room.members.remove(self.user)
+        if self.room:
+            self.room.members.remove(self.user)
     
     def get_current_timestamp(self):
         from datetime import datetime

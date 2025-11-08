@@ -1,0 +1,101 @@
+/* Sidebar & Chat List */
+.whatsapp-container {
+    display: flex;
+    height: 100%;
+    background-color: #fff;
+    color: var(--text-primary);
+}
+.sidebar {
+    width: 400px;
+    background-color: #fafafa;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.sidebar-header {
+    padding: 15px 20px;
+    background-color: #f3f3f3;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sidebar-header h5 { margin: 0; color: var(--text-primary); font-size: 1.2rem; }
+.btn-new-chat { background-color: transparent; border: none; color: var(--orange-primary); font-size: 1.5rem; cursor: pointer; }
+.btn-new-chat:hover { transform: scale(1.1); transition: 0.2s; }
+.chat-list { flex: 1; overflow-y: auto; }
+.chat-item { padding: 15px 20px; border-bottom: 1px solid var(--border-color); cursor: pointer; display: flex; align-items: center; gap: 15px; text-decoration: none; color: inherit; }
+.chat-item:hover { background-color: #f9f9f9; }
+.chat-avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--orange-primary), var(--orange-light)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; flex-shrink: 0; }
+.chat-info { flex: 1; min-width: 0; }
+.chat-name { font-weight: 600; color: var(--text-primary); font-size: 1rem; margin-bottom: 5px; }
+.chat-description { color: var(--text-secondary); font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.chat-time { color: var(--text-secondary); font-size: 0.75rem; }
+.chat-badge { background-color: var(--orange-primary); color: white; border-radius: 12px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; }
+.main-content { flex: 1; display: flex; align-items: center; justify-content: center; background-color: #ffffff; }
+.welcome-message { text-align: center; color: var(--text-secondary); }
+.welcome-message i { font-size: 5rem; color: var(--orange-primary); margin-bottom: 20px; }
+.welcome-message h3 { color: var(--text-primary); margin-bottom: 10px; }
+.section-divider { padding: 10px 20px; background-color: #f7f7f7; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; border-bottom: 1px solid var(--border-color); }
+.empty-state { padding: 40px 20px; text-align: center; color: var(--text-secondary); }
+.status-online { color: #1dcf6d; }
+.status-offline { color: var(--text-secondary); }
+
+/* === Modal style sidebar-like === */
+.modal-sidebar {
+    background-color: #fafafa;
+    width: 400px;
+    max-width: 90%;
+    border-radius: 10px;
+    padding: 15px;
+}
+.modal-sidebar h5 {
+    margin-bottom: 10px;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.modal-sidebar .btn-close { font-size: 1.2rem; color: var(--text-secondary); background: none; border: none; }
+.modal-chat-list { max-height: 400px; overflow-y: auto; margin-top: 10px; }
+.modal-chat-list a {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    border-radius: 8px; text-decoration: none; color: inherit;
+    transition: background-color 0.2s;
+}
+.modal-chat-list a:hover { background-color: #f0f0f0; }
+.modal-chat-list .chat-avatar { width: 35px; height: 35px; font-size: 1rem; }
+.modal-footer { margin-top: 15px; display: flex; justify-content: space-between; gap: 10px; }
+
+/* Boutons modal */
+.modal-footer button { flex: 1; border-radius: 8px; padding: 8px 10px; border: none; cursor: pointer; }
+.btn-create { background-color: var(--orange-primary); color: #fff; }
+.btn-create:hover { background-color: var(--orange-dark); }
+.btn-close-modal { background-color: #ccc; }
+.btn-close-modal:hover { background-color: #999; }
+
+@media (max-width: 768px) {
+    .sidebar { width: 100%; }
+    .main-content { display: none; }
+}
+.btn-cancel {
+        width: 100%;
+        padding: 14px;
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 10px;
+        text-align: center;
+        display: block;
+        text-decoration: none;
+    }
+
+    .btn-cancel:hover {
+        border-color: var(--text-secondary);
+        color: var(--text-primary);
+    }

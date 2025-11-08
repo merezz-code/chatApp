@@ -87,13 +87,49 @@ def choose_user_chat(request):
 
 @login_required
 def room_detail(request, room_name):
-    """Page de détail d'un salon de discussion"""
-    room = get_object_or_404(Room, name=room_name)
+    room = Room.objects.filter(name__iexact=room_name).first()
+
+    if request.method == 'POST':
+        username_to_add = request.POST.get('username_to_add')
+        if username_to_add:
+            try:
+                user_to_add = User.objects.get(username=username_to_add)
+                room.members.add(user_to_add)
+                messages.success(request, f'{user_to_add.username} a été ajouté au salon.')
+            except User.DoesNotExist:
+                messages.error(request, 'Cet utilisateur n\'existe pas.')
+
+        return redirect('room_detail', room_name=room.name)
+
+    if request.user not in room.members.all():
+        messages.error(request, "Vous n'êtes pas membre de ce salon.")
+        return redirect('home')
+
     messages_list = room.messages.all().select_related('user')[:50]
+    membre_contact = User.objects.exclude(id__in=room.members.all())
+
     return render(request, 'chat/room.html', {
         'room': room,
-        'messages': messages_list
+        'messages': messages_list,
+        'membre_contact': membre_contact,
     })
+
+@login_required
+def leave_room(request, room_name):
+    """
+    Vue dédiée pour retirer un utilisateur d'un salon.
+    """
+    room = Room.objects.filter(name__iexact=room_name).first()
+
+    if room and request.user in room.members.all():
+        room.members.remove(request.user)
+        messages.success(request, f"Vous avez quitté le salon '{room.name}'.")
+    elif room:
+        messages.error(request, "Vous n'êtes pas membre de ce salon.")
+    else:
+        messages.error(request, "Ce salon n'existe pas.")
+
+    return redirect('home')
 
 
 @login_required
@@ -103,12 +139,14 @@ def create_room(request):
         name = request.POST.get('name')
         description = request.POST.get('description', '')
         if name:
-            if not Room.objects.filter(name=name).exists():
+            if not Room.objects.filter(name__iexact=name).exists():
                 room = Room.objects.create(
                     name=name,
                     description=description,
                     created_by=request.user
                 )
+                # Ajouter le créateur dans les membres immédiatement
+                room.members.add(request.user)
                 messages.success(request, f'Salon "{name}" créé avec succès!')
                 return redirect('room_detail', room_name=name)
             else:
@@ -152,7 +190,7 @@ def upload_file(request):
         file = request.FILES['file']
         
         if room_name:
-            room = Room.objects.get(name=room_name)
+            room = Room.objects.filter(name__iexact=room_name).first()
             if file.content_type.startswith('image/'):
                 message = Message.objects.create(
                     room=room,
