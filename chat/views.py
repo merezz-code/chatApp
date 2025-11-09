@@ -59,8 +59,8 @@ def home(request):
     # Tous les salons existants
     rooms = Room.objects.all().order_by('-created_at')
     user_rooms = Room.objects.filter(
-        messages__user=request.user
-    ).distinct()
+        members = request.user
+    ).distinct().order_by('-created_at')
 
     # Tous les chats privés de l'utilisateur (exemple si tu as une relation)
     # Ici, on prend les utilisateurs avec qui il a déjà discuté
@@ -69,7 +69,7 @@ def home(request):
         *PrivateMessage.objects.filter(receiver=request.user).values_list('sender_id', flat=True) ] ).distinct().exclude(id=request.user.id)
 
     # Utilisateurs disponibles pour commencer un chat (pas encore dans les chats privés)
-    users_not_chatted = User.objects.all()
+    users_not_chatted = User.objects.exclude(id=request.user.id)
 
     context = {
         'rooms': rooms,
