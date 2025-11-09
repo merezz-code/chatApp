@@ -11,9 +11,9 @@
         </div>
 
         <div class="chat-list">
-            {% if rooms %}
+            {% if user_rooms %}
                 <div class="section-divider"><i class="fas fa-hashtag"></i> SALONS DE DISCUSSION</div>
-                {% for room in rooms %}
+                {% for room in user_rooms %}
                     <a href="{% url 'room_detail' room.name %}" class="chat-item">
                         <div class="chat-avatar"><i class="fas fa-users"></i></div>
                         <div class="chat-info">
