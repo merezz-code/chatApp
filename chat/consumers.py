@@ -205,7 +205,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """
         Récupère le salon en ignorant la casse.
         """
-        return Room.objects.filter(name__iexact=self.room_name).first()
+        return Room.objects.select_related('created_by').filter(name__iexact=self.room_name).first()
 
     @database_sync_to_async
     def get_members_list_data(self):
