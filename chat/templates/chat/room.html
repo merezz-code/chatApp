@@ -16,7 +16,8 @@
         <div class="chat-header-info">
             <div class="chat-header-title">{{ room.name }}</div>
             <div class="chat-header-subtitle">
-                <i class="fas fa-users"></i> <span id="online-count">{{ room.get_online_count }}</span> membres en ligne
+                <i class="fas fa-users"></i> <span id="online-count">{{ room.get_online_count }}</span>
+                <span class="membre-item" data-bs-toggle="modal" data-bs-target="#membreItemModal"> Membres en ligne </span>
             </div>
         </div>
          <!-- Menu trois points -->
@@ -24,8 +25,9 @@
         <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
         <div class="menu-dropdown" id="menuDropdown">
             <div class="menu-item" onclick="leaveGroup()">Quitter le groupe</div>
-            <div class="menu-item" onclick="reportChat({{ room.id }})">Signaler</div>
-            <div class="menu-item" data-bs-toggle="modal" data-bs-target="#membreModal"> Ajouter nouveau membre</div>
+            {% if user == room.created_by %}
+                <div class="menu-item" data-bs-toggle="modal" data-bs-target="#membreModal"> Ajouter nouveau membre</div>
+            {% endif %}
         </div>
     </div>
     </div>
@@ -92,49 +94,77 @@
     </div>
 </div>
 </div>
-    <div class="modal fade" id="membreModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="membreModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-sidebar">
-            <!-- Liste des utilisateurs disponibles -->
             {% if membre_contact %}
-                <form method="POST">
-                    {% csrf_token %}
-                    <div class="modal-chat-list mt-2">
-                        <div class="section-divider"><i class="fas fa-user"></i> Utilisateurs</div>
-                        {% for user in membre_contact %}
-                            <div class="user-list-item">
-                                <div class="chat-avatar"><i class="fas fa-user"></i></div>
-                                <div class="chat-info">
-                                    <div class="chat-name">{{ user.username }}</div>
-                                </div>
-                                <button type="submit" class="add-user-btn"
-                                        name="username_to_add"
-                                        value="{{ user.username }}"
-                                >
-                                    <i class="fas fa-plus-circle"></i>
-                                </button>
+                <div class="modal-chat-list mt-2">
+                    <div class="section-divider"><i class="fas fa-user"></i> Utilisateurs</div>
+                    {% for user in membre_contact %}
+                        <div class="user-list-item">
+                            <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                            <div class="chat-info">
+                                <div class="chat-name">{{ user.username }}</div>
                             </div>
-                        {% endfor %}
-                    </div>
-                </form>
 
+                            <button type="button" class="add-user-btn"
+                                    onclick="addMember('{{ user.username }}')">
+                                <i class="fas fa-plus-circle"></i>
+                            </button>
+                            </div>
+                    {% endfor %}
+                </div>
             {% else %}
                 <p class="text-center mt-2 text-secondary">Aucun utilisateur disponible</p>
             {% endif %}
-            <div class="modal-footer">
-                <button class="btn-cancel" data-bs-dismiss="modal">Annuler</button>
-            </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" data-bs-dismiss="modal">Annuler</button>
+                </div>
           </div>
-    </div>
-  </div>
+</div>
 </div>
 
+<div class="modal fade" id="membreItemModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-sidebar">
+             <div class="modal-chat-list mt-2" id="member-list-container">
+                 <div class="section-divider"><i class="fas fa-user"></i> Les membres du group </div>
+                 <div id="member-list-items">
+                     {% if members_list %}
+                       {% for member in members_list %}
+                             <div class="user-list-item">
+                                 <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                                 <div class="chat-info">
+                                     <div class="chat-name">{{ member.username }}</div>
+                                 </div>
+                                 {% if user == room.created_by and member != room.created_by %}
+                                     <button onclick="removeMember('{{ member.username }}')"
+                                             class="remove-btn"
+                                             value="{{ member }}">
+                                         <i class="fa-solid fa-circle-minus"></i>
+                                     </button>
+                                 {% endif %}
+                             </div>
+                         {% endfor %}
+                     {% else %}
+                         <p class="text-center mt-2 text-secondary">Aucun Membre disponible</p>
+                     {% endif %}
+
+                 </div>
+             </div>
+            <div class="modal-footer">
+                    <button class="btn-cancel" data-bs-dismiss="modal">Annuler</button>
+             </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     const roomName = "{{ room.name }}";
     const username = "{{ user.username }}";
+    const adminUsername = "{{ room.created_by.username }}";
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws/chat/room/${roomName}/`;
     
@@ -148,12 +178,32 @@
         console.log("--- LOG NAVIGATEUR (WebSocket) ---: Données reçues:", data);
         if (data.type === 'message') {
             addMessage(data.username, data.message, data.timestamp);
-        } else if (data.type === 'user_join') {
-            addSystemMessage(data.message);
-        } else if (data.type === 'user_leave') {
-            addSystemMessage(data.message);
         }
-        
+        else if (data.type === 'members_update') {
+            // Afficher le message système (ex: "souad a rejoint")
+            if (data.message) {
+                addSystemMessage(data.message);
+            }
+            // Mettre à jour le compteur
+            const countElement = document.getElementById('online-count');
+            if (countElement && data.members_data) {
+                countElement.textContent = data.members_data.count;
+            }
+            // Reconstruire la liste des membres dans le modal
+            if (data.members_data) {
+                rebuildMemberList(data.members_data.members);
+            }
+            // Gérer le cas où ON EST retiré
+            if (data.username_removed === username) {
+                alert("Vous avez été retiré du salon.");
+                window.location.href = "{% url 'home' %}";
+            }
+        }
+        else if (data.type === 'group_left_you') {
+            // Le serveur confirme que nous avons quitté
+            alert(data.message);
+            window.location.href = "{% url 'home' %}";
+        }
         scrollToBottom();
     };
     
@@ -198,25 +248,7 @@
     function scrollToBottom() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-    
-    function sendMessage() {
-        const message = messageInput.value.trim();
-        if (message) {
-            chatSocket.send(JSON.stringify({
-                'message': message
-            }));
-            messageInput.value = '';
-        }
-    }
-    
-    sendButton.onclick = sendMessage;
-    
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
-    
+
     messageInput.focus();
     scrollToBottom();
 
@@ -280,7 +312,10 @@ function sendMessage() {
             if (data.status === 'success') {
                 // Envoyer aussi le texte si présent
                 if(messageText){
-                    chatSocket.send(JSON.stringify({'message': messageText}));
+                    chatSocket.send(JSON.stringify({
+                        'message': messageText,
+                        'action': 'message'
+                    }));
                 }
                 selectedFile = null;
                 filePreview.innerHTML = '';
@@ -290,11 +325,22 @@ function sendMessage() {
             }
         })
         .catch(err => console.error(err));
-    } else if(messageText) {
-        chatSocket.send(JSON.stringify({'message': messageText}));
+    }
+    else if(messageText) {
+        chatSocket.send(JSON.stringify({
+            'message': messageText,
+            'action': 'message',
+        }));
         messageInput.value = '';
     }
 }
+    sendButton.onclick = sendMessage;
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
 const menuToggle = document.getElementById('menuToggle');
 const menuDropdown = document.getElementById('menuDropdown');
 
@@ -311,11 +357,79 @@ document.addEventListener('click', (e) => {
 // quiter le group
     function leaveGroup() {
         if (confirm("Êtes-vous sûr de vouloir quitter ce salon ?")) {
-            // Redirige vers la nouvelle vue qui gère la suppression
-            window.location.href = "{% url 'leave_room' room.name %}";
+            console.log("Envoi de la demande pour quitter le salon...");
+            chatSocket.send(JSON.stringify({
+                'action': 'leave_group'
+            }));
         }
     }
 
+    function rebuildMemberList(members) {
+        const listContainer = document.getElementById('member-list-items');
+        if (!listContainer) return;
+        // Vider le conteneur avant de le remplir
+        listContainer.innerHTML = '';
+
+        if (!members || members.length === 0) {
+            //recrée le message "Aucun membre"
+            listContainer.innerHTML = '<p class="text-center mt-2 text-secondary">Aucun Membre disponible</p>';
+            return;
+        }
+
+        // reconstruit la liste
+        members.forEach(member => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'user-list-item';
+            itemDiv.id = `member-item-${member.username}`;
+
+            let itemHtml = `
+                <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                <div class="chat-info">
+                    <div class="chat-name">${escapeHtml(member.username)}</div>
+                </div>
+            `;
+
+            if (username === adminUsername && member.username !== adminUsername) {
+                itemHtml += `
+                    <button type="button" class="remove-btn"
+                            onclick="removeMember('${escapeHtml(member.username)}')">
+                        <i class="fa-solid fa-circle-minus"></i>
+                    </button>
+                `;
+            }
+            itemDiv.innerHTML = itemHtml;
+            listContainer.appendChild(itemDiv);
+        });
+    }
+    function removeMember(usernameToRemove) {
+        if (confirm(`Êtes-vous sûr de vouloir retirer ${usernameToRemove} du salon ?`)) {
+            console.log(`Envoi de la demande de suppression pour: ${usernameToRemove}`);
+            chatSocket.send(JSON.stringify({
+                'action': 'remove_member',
+                'username': usernameToRemove
+            }));
+
+            var modalEl = document.getElementById('membreItemModal');
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) {
+                 modal.hide();
+            }
+        }
+    }
+    function addMember(usernameToAdd) {
+        console.log(`Demande d'ajout pour: ${usernameToAdd}`);
+        chatSocket.send(JSON.stringify({
+            'action': 'add_member',
+            'username': usernameToAdd
+        }));
+
+        // Fermer le modal
+        var modalEl = document.getElementById('membreModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) {
+             modal.hide();
+        }
+    }
 
 </script>
 {% endblock %}

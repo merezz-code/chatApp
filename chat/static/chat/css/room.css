@@ -331,26 +331,29 @@
 }
 
 
-.add-user-btn {
-    background: none;       /* Enlève le fond */
-    border: none;           /* Enlève la bordure */
-    padding: 0;             /* Enlève l'espace intérieur */
-    cursor: pointer;        /* Garde la main au survol */
-    font-size: 1.3rem;      /* Agrandit l'icône "+" */
-    color: #666;             /* Couleur grise discrète pour l'icône */
+.remove-btn, .add-user-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 1.3rem;
+    color: #666;
 
     transition: color 0.2s, transform 0.2s;
-    flex-shrink: 0; /* Empêche le bouton de rétrécir */
+    flex-shrink: 0;
 }
 
-/* Effet au survol */
-.add-user-btn:hover {
+.remove-btn:hover, .add-user-btn:hover {
 color: var(--orange-primary);
 transform: scale(1.1);
 }
 
-.add-user-btn:focus-visible {
+.remove-btn:focus-visible, .add-user-btn:focus-visible {
     outline: 2px solid #007bff;
     outline-offset: 2px;
     border-radius: 50%;
+}
+
+.membre-item{
+    cursor: pointer;
 }
