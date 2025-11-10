@@ -2,12 +2,12 @@
 .whatsapp-container {
     display: flex;
     height: 100%;
-    background-color: #fff;
+    background-color: #fafafa;
     color: var(--text-primary);
 }
 .sidebar {
     width: 400px;
-    background-color: #fafafa;
+    background-color: #f3f3f3;
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;

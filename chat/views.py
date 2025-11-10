@@ -5,7 +5,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST, require_http_methods
 from .models import Room, Message, PrivateMessage, UserProfile
 from .forms import RoomForm, MessageForm, PrivateMessageForm
 
@@ -188,33 +189,70 @@ def private_chat(request, username):
 @login_required
 @require_POST
 def upload_file(request):
-    """Upload de fichier ou image via AJAX"""
-    if request.FILES.get('file'):
-        room_name = request.POST.get('room')
-        file = request.FILES['file']
-        
-        if room_name:
-            room = Room.objects.filter(name__iexact=room_name).first()
-            if file.content_type.startswith('image/'):
-                message = Message.objects.create(
-                    room=room,
-                    user=request.user,
-                    content=f'Image partagée: {file.name}',
-                    image=file
-                )
-            else:
-                message = Message.objects.create(
-                    room=room,
-                    user=request.user,
-                    content=f'Fichier partagé: {file.name}',
-                    file=file
-                )
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Fichier uploadé avec succès'
-            })
-    
-    return JsonResponse({
-        'status': 'error',
-        'message': 'Erreur lors de l\'upload'
-    }, status=400)
+    """Upload fichier ou image pour groupe ou chat privé"""
+    file = request.FILES.get('file')
+    if not file:
+        return JsonResponse({'status': 'error', 'message': 'Aucun fichier'}, status=400)
+
+    # === Si c'est un groupe ===
+    room_name = request.POST.get('room')
+    if room_name:
+        room = Room.objects.filter(name__iexact=room_name).first()
+        if not room:
+            return JsonResponse({'status': 'error', 'message': 'Salon introuvable'}, status=404)
+        # Crée le message pour le groupe
+        if file.content_type.startswith('image/'):
+            message = Message.objects.create(room=room, user=request.user,
+                                             content=f'Image partagée: {file.name}', image=file)
+        else:
+            message = Message.objects.create(room=room, user=request.user,
+                                             content=f'Fichier partagé: {file.name}', file=file)
+        return JsonResponse({'status': 'success', 'message': 'Fichier uploadé',
+                             'file_url': message.file.url if message.file else '',
+                             'image_url': message.image.url if message.image else ''})
+
+    # === Si c'est un chat privé ===
+    receiver_username = request.POST.get('receiver_username')
+    if receiver_username:
+        try:
+            receiver = User.objects.get(username=receiver_username)
+        except User.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Utilisateur introuvable'}, status=404)
+
+        # Crée le message pour le chat privé
+        if file.content_type.startswith('image/'):
+            message = PrivateMessage.objects.create(sender=request.user, receiver=receiver,
+                                                    content=f'Image partagée: {file.name}', image=file)
+        else:
+            message = PrivateMessage.objects.create(sender=request.user, receiver=receiver,
+                                                    content=f'Fichier partagé: {file.name}', file=file)
+        return JsonResponse({'status': 'success', 'message': 'Fichier uploadé',
+                             'file_url': message.file.url if message.file else '',
+                             'image_url': message.image.url if message.image else ''})
+
+    return JsonResponse({'status': 'error', 'message': 'Paramètre manquant'}, status=400)
+
+
+@login_required
+def delete_private_message(request, message_id):
+    """
+    Supprime un message privé si l'utilisateur est le propriétaire (sender).
+    Reste sur la page du chat après suppression.
+    """
+    message_obj = get_object_or_404(PrivateMessage, id=message_id)
+
+    # Vérifier que l'utilisateur est le propriétaire
+    if message_obj.sender == request.user:
+        message_obj.delete()
+
+    # Reste sur la page du chat avec l'autre utilisateur
+    return redirect('private_chat', username=message_obj.receiver.username)
+
+@login_required
+def delete_message(request, message_id):
+
+    message_obj = get_object_or_404(Message, id=message_id)
+    if message_obj.user == request.user:
+        message_obj.delete()
+
+    return redirect('room_detail', room_name=message_obj.room.name)
