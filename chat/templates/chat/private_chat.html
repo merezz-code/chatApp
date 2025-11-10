@@ -49,15 +49,13 @@
                        data-id="{{ message.id }}"
                        data-bs-toggle="modal"
                        data-bs-target="#deleteModal">
-
-                        <svg xmlns="http://www.w3.org/2000/svg" class="bi" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                            <path fill="currentColor" d="M5.5 5.5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zm2.5.5a.5.5 0 0 1 .5-.5h.002a.5.5 0 0 1 .498.5v7a.5.5 0 0 1-.5.5H8.5a.5.5 0 0 1-.5-.5v-7zm3-.5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5z"/>
-                            <path fill="currentColor" d="M14.5 3a1 1 0 0 1-1 1h-11a1 1 0 0 1 0-2h2.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1H13.5a1 1 0 0 1 1 1zM5.118 4 5 5h6l-.118-1H5.118zM4.5 5a.5.5 0 0 0-.5.5v8A1.5 1.5 0 0 0 5.5 15h5A1.5 1.5 0 0 0 12 13.5v-8a.5.5 0 0 0-.5-.5h-7z"/>
-                        </svg>
+                         <i class="fas fa-trash "></i>
                     </a>
                 {% endif %}
                 <div class="message-bubble {% if message.sender == user %}sent{% else %}received{% endif %}">
                     <div class="message-text">{{ message.content }}</div>
+
+
                     {% if message.image %}
                         <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
                     {% endif %}
@@ -69,7 +67,13 @@
                         </div>
                     {% endif %}
                     <div class="message-time">{{ message.timestamp|date:"d/m H:i" }}</div>
+                {% if message.sender == request.user %}
+ {% if message.is_read %}
+<small class="text-light">Vu</small>
+{% endif %}
+                {% endif %}
                 </div>
+
             </div>
         {% endfor %}
     {% else %}

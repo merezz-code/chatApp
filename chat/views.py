@@ -72,10 +72,17 @@ def home(request):
     # Utilisateurs disponibles pour commencer un chat (pas encore dans les chats privés)
     users_not_chatted = User.objects.exclude(id=request.user.id)
 
+    private_chats = []
+    for user in user_chats:
+        unread_count = request.user.profile.unread_private_count(user)
+        private_chats.append({
+            'user': user,
+            'unread_count': unread_count
+        })
     context = {
         'rooms': rooms,
         'user_rooms': user_rooms,
-        'private_chats': user_chats,
+        'private_chats': private_chats,
         'users_not_chatted': users_not_chatted,
     }
     return render(request, 'chat/home.html', context)
@@ -161,7 +168,6 @@ def create_room(request):
 
 @login_required
 def private_chat(request, username):
-    """Discussion privée avec un autre utilisateur"""
     other_user = get_object_or_404(User, username=username)
     
     messages_sent = PrivateMessage.objects.filter(
@@ -179,17 +185,16 @@ def private_chat(request, username):
     )
     
     messages_received.filter(is_read=False).update(is_read=True)
-    
+
+
     return render(request, 'chat/private_chat.html', {
         'other_user': other_user,
         'messages': all_messages
     })
 
-
 @login_required
 @require_POST
 def upload_file(request):
-    """Upload fichier ou image pour groupe ou chat privé"""
     file = request.FILES.get('file')
     if not file:
         return JsonResponse({'status': 'error', 'message': 'Aucun fichier'}, status=400)

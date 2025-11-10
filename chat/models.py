@@ -64,3 +64,14 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return f'{self.user.username} Profile'
+
+    def unread_private_count(self, other_user):
+        """
+        Retourne le nombre de messages non lus envoyés par other_user à self.user
+        """
+        return PrivateMessage.objects.filter(
+            sender=other_user,
+            receiver=self.user,
+            is_read=False
+        ).count()
+

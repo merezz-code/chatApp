@@ -291,3 +291,10 @@
 .modal-footer {
   border-top: none;
 }
+.read-bubble {
+  background-color: #e7f5ff;
+  border: 1px solid #b3e5fc;
+  transition: background-color 0.5s;
+}
+
+
