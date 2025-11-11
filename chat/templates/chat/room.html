@@ -169,6 +169,15 @@
         </div>
     </div>
 </div>
+
+<div id="monModalErreur" class="modal-overlay">
+    <div class="modal-contenu">
+        <span class="modal-fermer" id="fermerModal">&times;</span>
+        <h3>Erreur</h3>
+        <p id="modalMessageTexte"></p>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -183,6 +192,10 @@
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const chatMessages = document.getElementById('chat-messages');
+
+    const modal = document.getElementById('monModalErreur');
+    const messageElement = document.getElementById('modalMessageTexte');
+    const spanFermer = document.getElementById('fermerModal');
     
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
@@ -214,6 +227,9 @@
             // Le serveur confirme que nous avons quitté
             alert(data.message);
             window.location.href = "{% url 'home' %}";
+        }
+        else if (data.type === "error"){
+            afficherModalErreur(data.message);
         }
         scrollToBottom();
     };
@@ -418,6 +434,7 @@ document.addEventListener('click', (e) => {
             listContainer.appendChild(itemDiv);
         });
     }
+
     function removeMember(usernameToRemove) {
         if (confirm(`Êtes-vous sûr de vouloir retirer ${usernameToRemove} du salon ?`)) {
             console.log(`Envoi de la demande de suppression pour: ${usernameToRemove}`);
@@ -433,6 +450,7 @@ document.addEventListener('click', (e) => {
             }
         }
     }
+
     function addMember(usernameToAdd) {
         console.log(`Demande d'ajout pour: ${usernameToAdd}`);
         chatSocket.send(JSON.stringify({
@@ -445,6 +463,22 @@ document.addEventListener('click', (e) => {
         var modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) {
              modal.hide();
+        }
+    }
+
+    function afficherModalErreur(message) {
+        // maj le texte du message
+        messageElement.textContent = message;
+        modal.style.display = 'block';
+    }
+    //  fermer le modal
+    spanFermer.onclick = function() {
+        modal.style.display = 'none';
+    }
+    // Fermer aussi si l'utilisateur clique en dehors du contenu
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
         }
     }
 
