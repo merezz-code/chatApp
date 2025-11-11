@@ -35,26 +35,37 @@
     
     <div id="chat-messages" class="chat-messages">
         {% for message in messages %}
-            <div class="message-wrapper {% if message.user == user %}sent{% else %}received{% endif %}">
-                <div class="message-bubble {% if message.user == user %}sent{% else %}received{% endif %}">
-                    {% if message.user != user %}
-                        <div class="message-sender">{{ message.user.username }}</div>
-                    {% endif %}
-                    <div class="message-text">{{ message.content }}</div>
-                    {% if message.image %}
-                        <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
-                    {% endif %}
-                    {% if message.file %}
-                        <div class="mt-2">
-                            <a href="{{ message.file.url }}" style="color: inherit;" download>
-                                <i class="fas fa-file"></i> Fichier joint
-                            </a>
-                        </div>
-                    {% endif %}
-                    <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
+    <div class="message-wrapper {% if message.user == user %}sent{% else %}received{% endif %}">
+        <div class="message-bubble {% if message.user == user %}sent{% else %}received{% endif %}">
+            {% if message.user != user %}
+                <div class="message-sender">{{ message.user.username }}</div>
+            {% endif %}
+            <div class="message-text">{{ message.content }}</div>
+            {% if message.image %}
+                <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
+            {% endif %}
+            {% if message.file %}
+                <div class="mt-2">
+                    <a href="{{ message.file.url }}" style="color: inherit;" download>
+                        <i class="fas fa-file"></i> Fichier joint
+                    </a>
                 </div>
-            </div>
-        {% endfor %}
+            {% endif %}
+            <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
+
+            {% if message.user == user %}
+                <!-- Formulaire suppression -->
+                <form action="{% url 'delete_message' message.id %}" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn  btn-icon " title="Supprimer">
+                        <i class="fas fa-trash "></i>
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+{% endfor %}
+
     </div>
     
 <div class="chat-input-container">
@@ -265,6 +276,12 @@
     picker.addEventListener('emoji-click', event => {
       messageInput.value += event.detail.unicode;
     });
+    document.addEventListener('click', (e) => {
+    if (!emojiButton.contains(e.target) && !emojiPicker.contains(e.target)) {
+        emojiPicker.style.display = 'none';
+    }
+});
+
     const fileInput = document.getElementById('file-upload');
 const filePreview = document.getElementById('file-preview');
 

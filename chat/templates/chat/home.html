@@ -31,18 +31,24 @@
             {% if private_chats %}
                 <div class="section-divider"><i class="fas fa-user"></i> MESSAGES PRIVÉS</div>
                 {% for chat in private_chats %}
-                    <a href="{% url 'private_chat' chat.username %}" class="chat-item">
+                    <a href="{% url 'private_chat' chat.user.username %}" class="chat-item">
                         <div class="chat-avatar"><i class="fas fa-user"></i></div>
                         <div class="chat-info">
-                            <div class="chat-name">{{ chat.username }}</div>
+                            <div class="chat-name">{{ chat.user.username }}</div>
                             <div class="chat-description">
-                                {% if chat.profile.is_online %}
+                                {% if chat.user.profile.is_online %}
                                     <span class="status-online"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> En ligne</span>
                                 {% else %}
                                     <span class="status-offline">Hors ligne</span>
                                 {% endif %}
                             </div>
                         </div>
+                    {% if chat.unread_count > 0%}
+                                   <div class="chat-meta">
+                        <div class="chat-badge">{{ chat.unread_count }}</div>
+                    </div>
+                                {% endif %}
+
                     </a>
                 {% endfor %}
             {% endif %}
