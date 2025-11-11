@@ -11,7 +11,6 @@ urlpatterns = [
     path('private/<str:username>/', views.private_chat, name='private_chat'),
     path('upload/', views.upload_file, name='upload_file'),
     path('chat/new/', views.choose_user_chat, name='choose_user_chat'),
-    path('room/<str:room_name>/leave/', views.leave_room, name='leave_room'),
     path('delete_private_message/<int:message_id>/', views.delete_private_message, name='delete_private_message'),
     path('delete_message/<int:message_id>/', views.delete_message, name='delete_message'),
 ]
