@@ -293,67 +293,122 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
 class PrivateChatConsumer(AsyncWebsocketConsumer):
-    """Consumer pour les messages privés"""
-    
+
     async def connect(self):
         self.user = self.scope['user']
         self.other_username = self.scope['url_route']['kwargs']['username']
-        
+
         if not self.user.is_authenticated:
             await self.close()
             return
-        
+
+        # Room unique, neutre
         users = sorted([self.user.username, self.other_username])
         self.room_name = f'private_{users[0]}_{users[1]}'
-        
-        await self.channel_layer.group_add(
-            self.room_name,
-            self.channel_name
-        )
-        
+
+        await self.channel_layer.group_add(self.room_name, self.channel_name)
         await self.accept()
-    
+
     async def disconnect(self, close_code):
-        if hasattr(self, 'room_name'):
-            await self.channel_layer.group_discard(
-                self.room_name,
-                self.channel_name
-            )
-    
+        await self.channel_layer.group_discard(self.room_name, self.channel_name)
+
     async def receive(self, text_data):
+        """
+        Gère :
+        - Envoi message (texte, image, fichier)
+        - Suppression message
+        """
         data = json.loads(text_data)
-        message_content = data.get('message', '')
-        
-        if message_content:
-            await self.save_private_message(message_content)
-            
-            await self.channel_layer.group_send(
-                self.room_name,
-                {
-                    'type': 'private_message',
-                    'message': message_content,
-                    'sender': self.user.username,
-                    'timestamp': self.get_current_timestamp()
-                }
-            )
-    
+        msg_type = data.get('type', 'message')
+
+        # ---------------------
+        # 🔹 ENVOI MESSAGE
+        # ---------------------
+        if msg_type == 'message':
+            content = data.get('message', '')
+            file_url = data.get('file_url')
+            image_url = data.get('image_url')
+
+            if content or file_url or image_url:
+                message = await self.save_message(content)
+
+                await self.channel_layer.group_send(
+                    self.room_name,
+                    {
+                        'type': 'private_message',
+                        'id': message.id,
+                        'sender': self.user.username,
+                        'message': message.content,
+                        'timestamp': message.timestamp.strftime("%d/%m %H:%M"),
+                        'file_url': file_url,
+                        'image_url': image_url,
+                        'is_read': message.is_read,
+                    }
+                )
+
+        # ---------------------
+        # 🔹 SUPPRESSION MESSAGE
+        # ---------------------
+        elif msg_type == 'delete_message':
+            msg_id = data.get('message_id')
+            deleted = await self.delete_message(msg_id)
+
+            if deleted:
+                await self.channel_layer.group_send(
+                    self.room_name,
+                    {
+                        'type': 'delete_message_event',
+                        'message_id': msg_id
+                    }
+                )
+
+    # ====================================================
+    # 🔥 FONCTIONS BROADCAST
+    # ====================================================
+
     async def private_message(self, event):
+        """
+        Envoi d'un message à TOUS les clients connectés.
+        Ici on renvoie exactement ce que ton JS attend.
+        """
         await self.send(text_data=json.dumps({
-            'type': 'message',
-            'message': event['message'],
+            'type': 'message',  # obligatoire pour ton JS
+            'id': event['id'],
             'sender': event['sender'],
-            'timestamp': event['timestamp']
+            'message': event['message'],
+            'timestamp': event['timestamp'],
+            'file_url': event.get('file_url'),
+            'image_url': event.get('image_url'),
+            'is_read': event.get('is_read'),
         }))
-    
+
+    async def delete_message_event(self, event):
+        """
+        Broadcast de suppression de message.
+        """
+        await self.send(text_data=json.dumps({
+            'type': 'delete_message',
+            'message_id': event['message_id']
+        }))
+
+    # ====================================================
+    # 🔥 BASE DE DONNÉES
+    # ====================================================
+
     @database_sync_to_async
-    def save_private_message(self, message_content):
+    def save_message(self, content):
         receiver = User.objects.get(username=self.other_username)
-        PrivateMessage.objects.create(
+        return PrivateMessage.objects.create(
             sender=self.user,
             receiver=receiver,
-            content=message_content
+            content=content
         )
-    
-    def get_current_timestamp(self):
-        from datetime import datetime
-        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    @database_sync_to_async
+    def delete_message(self, message_id):
+        try:
+            msg = PrivateMessage.objects.get(id=message_id, sender=self.user)
+            msg.delete()
+            return True
+        except PrivateMessage.DoesNotExist:
+            return False

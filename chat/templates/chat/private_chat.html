@@ -1,315 +1,297 @@
 {% extends 'chat/base.html' %}
 
 {% block title %}{{ other_user.username }} - ChatApp{% endblock %}
-
 {% block body_class %}chat-page{% endblock %}
 
 {% block content %}
 <div class="chat-container">
-<div class="chat-header">
-    <a href="{% url 'home' %}" class="btn-back">
-        <i class="fas fa-arrow-left fa-lg"></i>
-    </a>
-    <div class="chat-header-avatar">
-        <i class="fas fa-user"></i>
-    </div>
-    <div class="chat-header-info">
-        <div class="chat-header-title">{{ other_user.username }}</div>
-        <div class="chat-header-subtitle">
-            {% if other_user.profile.is_online %}
-                <i class="fas fa-circle" style="font-size: 0.6rem; color: #25D366;"></i> En ligne
-            {% else %}
-                Hors ligne
-            {% endif %}
+
+    <!-- HEADER -->
+    <div class="chat-header">
+        <a href="{% url 'home' %}" class="btn-back">
+            <i class="fas fa-arrow-left fa-lg"></i>
+        </a>
+        <div class="chat-header-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <div class="chat-header-info">
+            <div class="chat-header-title">{{ other_user.username }}</div>
+            <div class="chat-header-subtitle">
+                {% if other_user.profile.is_online %}
+                    <i class="fas fa-circle" style="font-size: 0.6rem; color: #25D366;"></i> En ligne
+                {% else %}
+                    Hors ligne
+                {% endif %}
+            </div>
+        </div>
+        <div class="chat-header-menu">
+            <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
+            <div class="menu-dropdown" id="menuDropdown">
+                {% if room.is_group %}
+                    <div class="menu-item" onclick="leaveGroup({{ room.id }})">Quitter le groupe</div>
+                {% else %}
+                    <div class="menu-item" onclick="blockUser({{ other_user.id }})">Bloquer</div>
+                {% endif %}
+                <div class="menu-item" onclick="reportChat({{ room.id }})">Signaler</div>
+            </div>
         </div>
     </div>
 
-    <!-- Menu trois points -->
-    <div class="chat-header-menu">
-        <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
-        <div class="menu-dropdown" id="menuDropdown">
-            {% if room.is_group %}
-                <div class="menu-item" onclick="leaveGroup({{ room.id }})">Quitter le groupe</div>
-            {% else %}
-                <div class="menu-item" onclick="blockUser({{ other_user.id }})">Bloquer</div>
-            {% endif %}
-            <div class="menu-item" onclick="reportChat({{ room.id }})">Signaler</div>
-        </div>
-    </div>
-</div>
+    <!-- MESSAGES -->
+    <div id="chat-messages" class="chat-messages">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message-wrapper {% if message.sender == user %}sent{% else %}received{% endif %}" id="msg-{{ message.id }}">
+                    <div class="message-bubble {% if message.sender == user %}sent{% else %}received{% endif %}">
+                        <div class="message-text">{{ message.content }}</div>
 
-<div id="chat-messages" class="chat-messages">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="message-wrapper {% if message.sender == user %}sent{% else %}received{% endif %}">
-                {% if message.sender == user %}
-                    <!-- Bouton de suppression -->
+                        {% if message.image %}
+                            <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
+                        {% endif %}
+                        {% if message.file %}
+                            <div class="mt-2">
+                                <a href="{{ message.file.url }}" style="color: inherit;" download>
+                                    <i class="fas fa-file"></i> Fichier joint
+                                </a>
+                            </div>
+                        {% endif %}
+                        <div class="message-time">{{ message.timestamp|date:"d/m H:i" }}</div>
+                        {% if message.sender == request.user and message.is_read %}
+                            <small class="text-light">Vu</small>
+                        {% endif %}
+                    </div>
+
+                    {% if message.sender == user %}
                     <a href="#"
-                       class="icon-link icon-link-hover text-danger text-decoration-none delete-btn"
+                       class="icon-link icon-link-hover text-danger text-decoration-none delete-btn delete"
                        data-id="{{ message.id }}"
                        data-bs-toggle="modal"
                        data-bs-target="#deleteModal">
-                         <i class="fas fa-trash "></i>
+                        <i class="fas fa-trash"></i>
                     </a>
-                {% endif %}
-                <div class="message-bubble {% if message.sender == user %}sent{% else %}received{% endif %}">
-                    <div class="message-text">{{ message.content }}</div>
-
-
-                    {% if message.image %}
-                        <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
                     {% endif %}
-                    {% if message.file %}
-                        <div class="mt-2">
-                            <a href="{{ message.file.url }}" style="color: inherit;" download>
-                                <i class="fas fa-file"></i> Fichier joint
-                            </a>
-                        </div>
-                    {% endif %}
-                    <div class="message-time">{{ message.timestamp|date:"d/m H:i" }}</div>
-                {% if message.sender == request.user %}
- {% if message.is_read %}
-<small class="text-light">Vu</small>
-{% endif %}
-                {% endif %}
                 </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-chat">
+                <div>
+                    <i class="fas fa-comments"></i>
+                    <p>Aucun message encore.<br>Commencez la conversation!</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
 
-            </div>
-        {% endfor %}
-    {% else %}
-        <div class="empty-chat">
-            <div>
-                <i class="fas fa-comments"></i>
-                <p>Aucun message encore.<br>Commencez la conversation!</p>
-            </div>
+    <!-- INPUT -->
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <button class="btn-icon emoji-button" id="emoji-button" type="button" title="Emojis">
+                <i class="far fa-smile"></i>
+            </button>
+            <emoji-picker id="emoji-picker" style="display:none; position:absolute; bottom:70px; left:60px; z-index:1000;"></emoji-picker>
+
+            <label for="file-upload" class="btn-icon file-upload-label" title="Joindre Fichier ou Image">
+                <i class="fas fa-paperclip"></i>
+            </label>
+            <input type="file" id="file-upload" class="file-input" accept="image/*, .pdf, .zip, .docx" hidden>
+            <div id="file-preview" style="margin-top:8px; max-height:100px; overflow-y:auto;"></div>
+
+            <input type="text" id="message-input" class="chat-input" placeholder="Tapez un message..." autocomplete="off">
+            <button class="btn-send" id="send-button" type="button">
+                <i class="fas fa-paper-plane"></i>
+            </button>
         </div>
-    {% endif %}
-</div>
-
-<div class="chat-input-container">
-    <div class="chat-input-wrapper">
-        <button class="btn-icon emoji-button" id="emoji-button" type="button" title="Emojis">
-            <i class="far fa-smile"></i>
-        </button>
-
-        <emoji-picker id="emoji-picker" style="display:none; position:absolute; bottom:70px; left:60px; z-index:1000;">
-        </emoji-picker>
-        <label for="file-upload" class="btn-icon file-upload-label" title="Joindre Fichier ou Image">
-            <i class="fas fa-paperclip"></i>
-        </label>
-        <input type="file"
-               id="file-upload"
-               class="file-input"
-               accept="image/*, .pdf, .zip, .docx"
-               hidden>
-        <div id="file-preview" style="margin-top: 8px; max-height: 100px; overflow-y: auto;"></div>
-
-        <input type="text"
-               id="message-input"
-               class="chat-input"
-               placeholder="Tapez un message..."
-               autocomplete="off">
-        <button class="btn-send" id="send-button" type="button">
-            <i class="fas fa-paper-plane"></i>
-        </button>
     </div>
-</div>
 
-<!-- Modal Bootstrap -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content shadow-lg">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteModalLabel">Confirmation de suppression</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p>Voulez-vous vraiment supprimer ce message ?</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <form id="deleteMessageForm" method="post" style="display:none;">
-            {% csrf_token %}
-        </form>
-        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Supprimer</button>
+    <!-- Modal Bootstrap -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteModalLabel">Confirmation de suppression</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>Voulez-vous vraiment supprimer ce message ?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Supprimer</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
-    <script>
-const otherUsername = "{{ other_user.username }}";
-const currentUsername = "{{ user.username }}";
-const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const wsUrl = `${protocol}//${window.location.host}/ws/chat/private/${otherUsername}/`;
-
-const chatSocket = new WebSocket(wsUrl);
+<script>
+const chatMessages = document.getElementById('chat-messages');
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
-const chatMessages = document.getElementById('chat-messages');
 const emojiButton = document.getElementById('emoji-button');
 const emojiPicker = document.getElementById('emoji-picker');
 const fileInput = document.getElementById('file-upload');
 const filePreview = document.getElementById('file-preview');
 
 let selectedFile = null;
+const username = "{{ user.username }}";
 
-// --- Réception des messages WebSocket ---
-chatSocket.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-    if (data.type === 'message') {
-        addMessage(data.sender, data.message, data.timestamp, data.file_url, data.image_url);
-        scrollToBottom();
-    }
-};
+// --- WEBSOCKET ---
+const chatSocket = new WebSocket(
+    (window.location.protocol === 'https:' ? 'wss:' : 'ws:') +
+    "//" + window.location.host + "/ws/chat/private/{{ other_user.username }}/"
+);
 
-// --- Ajout d’un message dans le DOM ---
-function addMessage(sender, message, timestamp, file_url=null, image_url=null) {
-    const isSent = sender === currentUsername;
-    const wrapper = document.createElement('div');
-    wrapper.className = `message-wrapper ${isSent ? 'sent' : 'received'}`;
-    const bubble = document.createElement('div');
-    bubble.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
-
-    let html = '';
-    if (!isSent) html += `<div class="message-sender">${escapeHtml(sender)}</div>`;
-    html += `<div class="message-text">${escapeHtml(message)}</div>`;
-
-    if (image_url) html += `<img src="${image_url}" class="message-image img-fluid" alt="Image">`;
-    if (file_url) html += `<div class="mt-2"><a href="${file_url}" download><i class="fas fa-file"></i> Fichier joint</a></div>`;
-
-    html += `<div class="message-time">${timestamp}</div>`;
-    bubble.innerHTML = html;
-    wrapper.appendChild(bubble);
-    chatMessages.appendChild(wrapper);
-}
-
-// --- Échappement HTML ---
-function escapeHtml(text) {
+// --- ÉCHAPPEMENT HTML ---
+function escapeHtml(text){
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// --- Scroll automatique ---
-function scrollToBottom() {
+// --- AJOUT MESSAGE EN TEMPS RÉEL ---
+function addMessageToDOM(data){
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${data.sender === username ? 'sent' : 'received'}`;
+    wrapper.id = `msg-${data.id}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${data.sender === username ? 'sent' : 'received'}`;
+    bubble.innerHTML = `<div class="message-text">${escapeHtml(data.message)}</div>
+                        <div class="message-time">${data.timestamp}</div>`;
+    wrapper.appendChild(bubble);
+
+    if(data.sender === username){
+        const a = document.createElement('a');
+        a.href = "#";
+        a.className = "icon-link icon-link-hover text-danger text-decoration-none delete-btn delete";
+        a.dataset.id = data.id;
+        a.setAttribute('data-bs-toggle','modal');
+        a.setAttribute('data-bs-target','#deleteModal');
+        a.innerHTML = '<i class="fas fa-trash"></i>';
+        a.addEventListener('click', handleDeleteClick);
+        wrapper.appendChild(a);
+    }
+
+    chatMessages.appendChild(wrapper);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// --- Gestion emoji ---
-emojiButton.addEventListener('click', () => {
-    emojiPicker.style.display = (emojiPicker.style.display === 'none' || emojiPicker.style.display === '') ? 'block' : 'none';
+// --- GESTION SUPPRESSION ---
+let messageIdToDelete = null;
+function handleDeleteClick(e){
+    e.preventDefault();
+    messageIdToDelete = this.dataset.id;
+}
+
+// Ajouter l'écouteur à tous les liens delete existants
+document.querySelectorAll('.delete-btn').forEach(link => link.addEventListener('click', handleDeleteClick));
+
+// Confirmation suppression
+document.getElementById('confirmDeleteBtn').addEventListener('click', ()=>{
+    if(!messageIdToDelete) return;
+
+    chatSocket.send(JSON.stringify({
+        type: "delete_message",
+        message_id: messageIdToDelete
+    }));
+
+    const msg = document.getElementById("msg-" + messageIdToDelete);
+    if(msg) msg.remove();
+
+    messageIdToDelete = null;
+    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
 });
-const picker = document.getElementById('emoji-picker');
-    picker.addEventListener('emoji-click', event => {
-      messageInput.value += event.detail.unicode;
-    });
-    document.addEventListener('click', (e) => {
-    if (!emojiButton.contains(e.target) && !emojiPicker.contains(e.target)) {
-        emojiPicker.style.display = 'none';
+
+// --- ENVOI MESSAGE ---
+function sendMessage(){
+    const text = messageInput.value.trim();
+
+    if(selectedFile){
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('receiver_username', "{{ other_user.username }}");
+        if(text) formData.append('content', text);
+
+        fetch("{% url 'upload_file' %}",{
+            method:'POST',
+            headers:{'X-CSRFToken':'{{ csrf_token }}'},
+            body: formData
+        }).then(res=>res.json())
+        .then(data=>{
+            if(data.status==='success'){
+                chatSocket.send(JSON.stringify({
+                    message: text||'',
+                    file_url: data.file_url,
+                    image_url: data.image_url
+                }));
+                selectedFile=null;
+                filePreview.innerHTML='';
+                messageInput.value='';
+            } else alert(data.message);
+        }).catch(err=>console.error(err));
+    } else if(text){
+        chatSocket.send(JSON.stringify({type:'message', message:text}));
+        messageInput.value='';
     }
-});
+}
+sendButton.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', e=>{if(e.key==='Enter') sendMessage();});
 
-
-// --- Fichier sélectionné ---
-fileInput.addEventListener('change', function() {
-    filePreview.innerHTML = '';
+// --- FILE + PREVIEW ---
+fileInput.addEventListener('change', function(){
+    filePreview.innerHTML='';
     selectedFile = this.files[0];
-    if (!selectedFile) return;
+    if(!selectedFile) return;
 
     const p = document.createElement('p');
     p.textContent = '📎 ' + selectedFile.name;
     filePreview.appendChild(p);
 
-    if (selectedFile.type.startsWith('image/')) {
+    if(selectedFile.type.startsWith('image/')){
         const img = document.createElement('img');
         img.src = URL.createObjectURL(selectedFile);
-        img.style.maxWidth = '100px';
-        img.style.maxHeight = '80px';
-        img.style.marginTop = '4px';
+        img.style.maxWidth='100px';
+        img.style.maxHeight='80px';
+        img.style.marginTop='4px';
         filePreview.appendChild(img);
     }
 });
 
-// --- Envoi message + fichier ---
-function sendMessage() {
-    const messageText = messageInput.value.trim();
-
-    if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('receiver_username', otherUsername);
-        if (messageText) formData.append('content', messageText);
-
-        fetch("{% url 'upload_file' %}", {
-            method: 'POST',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                chatSocket.send(JSON.stringify({
-                    message: messageText || '',
-                    file_url: data.file_url,
-                    image_url: data.image_url
-                }));
-                selectedFile = null;
-                filePreview.innerHTML = '';
-                messageInput.value = '';
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(err => console.error(err));
-    } else if (messageText) {
-        chatSocket.send(JSON.stringify({ message: messageText }));
-        messageInput.value = '';
+// --- EMOJI PICKER ---
+emojiButton.addEventListener('click', ()=>emojiPicker.style.display = (emojiPicker.style.display==='none'?'block':'none'));
+emojiPicker.addEventListener('emoji-click', e=>messageInput.value+=e.detail.unicode);
+document.addEventListener('click', e=>{
+    if(!emojiButton.contains(e.target) && !emojiPicker.contains(e.target)){
+        emojiPicker.style.display='none';
     }
-}
+});
 
-sendButton.onclick = sendMessage;
-messageInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
-messageInput.focus();
-scrollToBottom();
+// --- RECEVOIR MESSAGE ---
+chatSocket.onmessage = function(e){
+    const data = JSON.parse(e.data);
 
+    if(data.type==='message') addMessageToDOM(data);
+    if(data.type==='delete_message'){
+        const msg = document.getElementById("msg-"+data.message_id);
+        if(msg) msg.remove();
+    }
+};
 
-    // === Suppression de message via modal ===
-    let messageIdToDelete = null;
+// --- MENU TOGGLE ---
+const menuToggle=document.getElementById('menuToggle');
+const menuDropdown=document.getElementById('menuDropdown');
+menuToggle.addEventListener('click',()=>menuDropdown.style.display=menuDropdown.style.display==='block'?'none':'block');
+document.addEventListener('click', e=>{
+    if(!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) menuDropdown.style.display='none';
+});
+</script>
 
-    // Sélection des boutons delete dans les messages
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            messageIdToDelete = btn.dataset.id;
-            console.log("Message à supprimer :", messageIdToDelete);
-            new bootstrap.Modal(document.getElementById('deleteModal')).show();
-        });
-    });
-
-    document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
-        if (!messageIdToDelete) return;
-        const form = document.getElementById('deleteMessageForm');
-        form.action = `/delete_private_message/${messageIdToDelete}/`;
-        form.submit();
-    });
-
-    // === Menu toggle ===
-    const menuToggle = document.getElementById('menuToggle');
-    const menuDropdown = document.getElementById('menuDropdown');
-
-    menuToggle.addEventListener('click', () => {
-        menuDropdown.style.display = menuDropdown.style.display === 'block' ? 'none' : 'block';
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) {
-            menuDropdown.style.display = 'none';
-        }
-    });
-
-
-    </script>
+<style>
+.message-wrapper{position:relative;}
+.delete-btn{position:absolute;top:5px;right:5px;display:none;}
+.message-wrapper:hover .delete-btn{display:block;}
+</style>
 {% endblock %}

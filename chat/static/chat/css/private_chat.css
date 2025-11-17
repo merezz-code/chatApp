@@ -297,4 +297,17 @@
   transition: background-color 0.5s;
 }
 
+.delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: none; /* caché par défaut */
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
 
+.message-wrapper:hover .delete-btn {
+    padding: 5px;
+    display: block; /* visible au survol */
+}
