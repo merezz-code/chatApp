@@ -1,11 +1,11 @@
 {% extends 'chat/base.html' %}
 
 {% block title %}{{ room.name }} - ChatApp{% endblock %}
-
 {% block body_class %}chat-page{% endblock %}
 
 {% block content %}
 <div class="chat-container">
+    <!-- CHAT HEADER -->
     <div class="chat-header">
         <a href="{% url 'home' %}" class="btn-back">
             <i class="fas fa-arrow-left fa-lg"></i>
@@ -20,467 +20,304 @@
                 <span class="membre-item" data-bs-toggle="modal" data-bs-target="#membreItemModal"> Membres en ligne </span>
             </div>
         </div>
-         <!-- Menu trois points -->
-    <div class="chat-header-menu">
-        <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
-        <div class="menu-dropdown" id="menuDropdown">
-            <div class="menu-item" onclick="leaveGroup()">Quitter le groupe</div>
-            {% if user == room.created_by %}
-                <div class="menu-item" data-bs-toggle="modal" data-bs-target="#membreModal"> Ajouter nouveau membre</div>
-            {% endif %}
+        <div class="chat-header-menu">
+            <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
+            <div class="menu-dropdown" id="menuDropdown">
+                <div class="menu-item" onclick="leaveGroup()">Quitter le groupe</div>
+                {% if user == room.created_by %}
+                    <div class="menu-item" data-bs-toggle="modal" data-bs-target="#membreModal"> Ajouter nouveau membre</div>
+                {% endif %}
+            </div>
         </div>
     </div>
-    </div>
 
-    
+    <!-- MESSAGES -->
     <div id="chat-messages" class="chat-messages">
         {% for message in messages %}
-    <div class="message-wrapper {% if message.user == user %}sent{% else %}received{% endif %}">
-        <div class="message-bubble {% if message.user == user %}sent{% else %}received{% endif %}">
-            {% if message.user != user %}
-                <div class="message-sender">{{ message.user.username }}</div>
-            {% endif %}
-            <div class="message-text">{{ message.content }}</div>
-            {% if message.image %}
-                <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
-            {% endif %}
-            {% if message.file %}
-                <div class="mt-2">
-                    <a href="{{ message.file.url }}" style="color: inherit;" download>
-                        <i class="fas fa-file"></i> Fichier joint
-                    </a>
-                </div>
-            {% endif %}
-            <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
-
+        <div class="message-wrapper {% if message.user == user %}sent{% else %}received{% endif %}" id="msg-{{ message.id }}">
+            <div class="message-bubble {% if message.user == user %}sent{% else %}received{% endif %}">
+                {% if message.user != user %}
+                    <div class="message-sender">{{ message.user.username }}</div>
+                {% endif %}
+                <div class="message-text">{{ message.content }}</div>
+                {% if message.image %}
+                    <img src="{{ message.image.url }}" class="message-image img-fluid" alt="Image">
+                {% endif %}
+                {% if message.file %}
+                    <div class="mt-2">
+                        <a href="{{ message.file.url }}" style="color: inherit;" download>
+                            <i class="fas fa-file"></i> Fichier joint
+                        </a>
+                    </div>
+                {% endif %}
+                <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
+            </div>
             {% if message.user == user %}
-                <!-- Formulaire suppression -->
-                <form action="{% url 'delete_message' message.id %}" method="post" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn  btn-icon " title="Supprimer">
-                        <i class="fas fa-trash "></i>
-                    </button>
-                </form>
+            <a href="#"
+               class="icon-link icon-link-hover text-danger text-decoration-none delete-btn delete"
+               data-id="{{ message.id }}"
+               data-bs-toggle="modal"
+               data-bs-target="#deleteModal">
+                <i class="fas fa-trash"></i>
+            </a>
             {% endif %}
         </div>
+        {% endfor %}
     </div>
-{% endfor %}
 
-    </div>
-    
-<div class="chat-input-container">
-    <div class="chat-input-wrapper">
+    <!-- INPUT -->
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <button class="btn-icon emoji-button" id="emoji-button" type="button" title="Emojis">
+                <i class="far fa-smile"></i>
+            </button>
+            <emoji-picker id="emoji-picker"
+                          style="display:none; position:absolute; bottom:70px; left:60px; z-index:1000;">
+            </emoji-picker>
 
-      <button class="btn-icon emoji-button" id="emoji-button" type="button" title="Emojis">
-      <i class="far fa-smile"></i>
-    </button>
+            <label for="file-upload" class="btn-icon file-upload-label" title="Joindre Fichier ou Image">
+                <i class="fas fa-paperclip"></i>
+            </label>
+            <input type="file"
+                   id="file-upload"
+                   class="file-input"
+                   accept="image/*, .pdf, .zip, .docx"
+                   hidden>
+            <div id="file-preview" style="margin-top: 8px; max-height: 100px; overflow-y: auto;"></div>
 
-    <!-- Fenêtre du sélecteur d’emojis -->
-    <emoji-picker id="emoji-picker"
-                  style="display:none; position:absolute; bottom:70px; left:60px; z-index:1000;">
-    </emoji-picker>
+            <input type="text"
+                   id="message-input"
+                   class="chat-input"
+                   placeholder="Tapez un message..."
+                   autocomplete="off">
 
-        <label for="file-upload" class="btn-icon file-upload-label" title="Joindre Fichier ou Image">
-            <i class="fas fa-paperclip"></i>
-        </label>
-        <input type="file"
-               id="file-upload"
-               class="file-input"
-               accept="image/*, .pdf, .zip, .docx"
-               hidden>
-         <div id="file-preview"></div>
-
-        <div id="file-preview" style="margin-top: 8px; max-height: 100px; overflow-y: auto;"></div>
-
-        <input type="text"
-               id="message-input"
-               class="chat-input"
-               placeholder="Tapez un message..."
-               autocomplete="off">
-
-        <button class="btn-send" id="send-button" type="button" title="Envoyer">
-            <i class="fas fa-paper-plane"></i>
-        </button>
-
-    </div>
-</div>
-</div>
-<div class="modal fade" id="membreModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content modal-sidebar">
-            {% if membre_contact %}
-                <div class="modal-chat-list mt-2">
-                    <div class="section-divider"><i class="fas fa-user"></i> Utilisateurs</div>
-                    {% for user in membre_contact %}
-                        <div class="user-list-item">
-                            <div class="chat-avatar"><i class="fas fa-user"></i></div>
-                            <div class="chat-info">
-                                <div class="chat-name">{{ user.username }}</div>
-                            </div>
-
-                            <button type="button" class="add-user-btn"
-                                    onclick="addMember('{{ user.username }}')">
-                                <i class="fas fa-plus-circle"></i>
-                            </button>
-                            </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-center mt-2 text-secondary">Aucun utilisateur disponible</p>
-            {% endif %}
-                <div class="modal-footer">
-                    <button class="btn-cancel" data-bs-dismiss="modal">Annuler</button>
-                </div>
-          </div>
-</div>
-</div>
-
-<div class="modal fade" id="membreItemModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content modal-sidebar">
-             <div class="modal-chat-list mt-2" id="member-list-container">
-                 <div class="section-divider"><i class="fas fa-user"></i> Les membres du group </div>
-                 <div id="member-list-items">
-                     {% if members_list %}
-                       {% for member in members_list %}
-                             <div class="user-list-item">
-                                 <div class="chat-avatar"><i class="fas fa-user"></i></div>
-                                 <div class="chat-info">
-                                     <div class="chat-name">{{ member.username }}</div>
-                                 </div>
-                                 {% if user == room.created_by and member != room.created_by %}
-                                     <button onclick="removeMember('{{ member.username }}')"
-                                             class="remove-btn"
-                                             value="{{ member }}">
-                                         <i class="fa-solid fa-circle-minus"></i>
-                                     </button>
-                                 {% endif %}
-                             </div>
-                         {% endfor %}
-                     {% else %}
-                         <p class="text-center mt-2 text-secondary">Aucun Membre disponible</p>
-                     {% endif %}
-
-                 </div>
-             </div>
-            <div class="modal-footer">
-                    <button class="btn-cancel" data-bs-dismiss="modal">Annuler</button>
-             </div>
+            <button class="btn-send" id="send-button" type="button" title="Envoyer">
+                <i class="fas fa-paper-plane"></i>
+            </button>
         </div>
     </div>
 </div>
 
-<div id="monModalErreur" class="modal-overlay">
-    <div class="modal-contenu">
-        <span class="modal-fermer" id="fermerModal">&times;</span>
-        <h3>Erreur</h3>
-        <p id="modalMessageTexte"></p>
+<!-- MODAL DELETE -->
+<div class="modal fade" id="deleteModal" tabindex="-1"
+     aria-labelledby="deleteModalLabel"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false">
+
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Confirmation de suppression</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Voulez-vous vraiment supprimer ce message ?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Supprimer</button>
+      </div>
     </div>
+  </div>
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    const roomName = "{{ room.name }}";
-    const username = "{{ user.username }}";
-    const adminUsername = "{{ room.created_by.username }}";
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/chat/room/${roomName}/`;
-    
-    const chatSocket = new WebSocket(wsUrl);
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
-    const chatMessages = document.getElementById('chat-messages');
-
-    const modal = document.getElementById('monModalErreur');
-    const messageElement = document.getElementById('modalMessageTexte');
-    const spanFermer = document.getElementById('fermerModal');
-    
-    chatSocket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        console.log("--- LOG NAVIGATEUR (WebSocket) ---: Données reçues:", data);
-        if (data.type === 'message') {
-            addMessage(data.username, data.message, data.timestamp);
-        }
-        else if (data.type === 'members_update') {
-            // Afficher le message système (ex: "souad a rejoint")
-            if (data.message) {
-                addSystemMessage(data.message);
-            }
-            // Mettre à jour le compteur
-            const countElement = document.getElementById('online-count');
-            if (countElement && data.members_data) {
-                countElement.textContent = data.members_data.count;
-            }
-            // Reconstruire la liste des membres dans le modal
-            if (data.members_data) {
-                rebuildMemberList(data.members_data.members);
-            }
-            // Gérer le cas où ON EST retiré
-            if (data.username_removed === username) {
-                alert("Vous avez été retiré du salon.");
-                window.location.href = "{% url 'home' %}";
-            }
-        }
-        else if (data.type === 'group_left_you') {
-            // Le serveur confirme que nous avons quitté
-            alert(data.message);
-            window.location.href = "{% url 'home' %}";
-        }
-        else if (data.type === "error"){
-            afficherModalErreur(data.message);
-        }
-        scrollToBottom();
-    };
-    
-    chatSocket.onclose = function(e) {
-        console.error('Chat socket closed unexpectedly');
-    };
-    
-    function addMessage(user, message, timestamp) {
-        const isSent = user === username;
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = `message-wrapper ${isSent ? 'sent' : 'received'}`;
-        
-        const bubble = document.createElement('div');
-        bubble.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
-        
-        let html = '';
-        if (!isSent) {
-            html += `<div class="message-sender">${user}</div>`;
-        }
-        html += `<div class="message-text">${escapeHtml(message)}</div>`;
-        html += `<div class="message-time">${timestamp}</div>`;
-        
-        bubble.innerHTML = html;
-        wrapper.appendChild(bubble);
-        chatMessages.appendChild(wrapper);
-    }
-    
-    function addSystemMessage(message) {
-        const div = document.createElement('div');
-        div.className = 'system-message';
-        div.innerHTML = `<span class="system-message-bubble">${escapeHtml(message)}</span>`;
-        chatMessages.appendChild(div);
-    }
-    
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    function scrollToBottom() {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    messageInput.focus();
-    scrollToBottom();
-
-    const emojiButton = document.getElementById('emoji-button');
-    const emojiPicker = document.getElementById('emoji-picker');
-
-    emojiButton.addEventListener('click', () => {
-      emojiPicker.style.display =
-        (emojiPicker.style.display === 'none' || emojiPicker.style.display === '')
-        ? 'block'
-        : 'none';
-    });
-    const picker = document.getElementById('emoji-picker');
-    picker.addEventListener('emoji-click', event => {
-      messageInput.value += event.detail.unicode;
-    });
-    document.addEventListener('click', (e) => {
-    if (!emojiButton.contains(e.target) && !emojiPicker.contains(e.target)) {
-        emojiPicker.style.display = 'none';
-    }
-});
-
-    const fileInput = document.getElementById('file-upload');
+const roomName = "{{ room.name }}";
+const username = "{{ user.username }}";
+const adminUsername = "{{ room.created_by.username }}";
+const chatMessages = document.getElementById('chat-messages');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const fileInput = document.getElementById('file-upload');
 const filePreview = document.getElementById('file-preview');
+const emojiButton = document.getElementById('emoji-button');
+const emojiPicker = document.getElementById('emoji-picker');
 
 let selectedFile = null;
+let messageIdToDelete = null;
 
-// Affichage du fichier sélectionné
-fileInput.addEventListener('change', function() {
-    filePreview.innerHTML = '';
+const chatSocket = new WebSocket(
+    (window.location.protocol === 'https:' ? 'wss:' : 'ws:') +
+    "//" + window.location.host + "/ws/chat/room/" + roomName + "/"
+);
+
+// --- UTILS ---
+function escapeHtml(text){
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+function scrollToBottom(){
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// --- MESSAGE DOM ---
+function addMessage(user, message, timestamp, id){
+    const isSent = user === username;
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${isSent ? 'sent' : 'received'}`;
+    wrapper.id = `msg-${id}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${isSent ? 'sent' : 'received'}`;
+    let html = '';
+    if(!isSent) html += `<div class="message-sender">${escapeHtml(user)}</div>`;
+    html += `<div class="message-text">${escapeHtml(message)}</div>`;
+    html += `<div class="message-time">${timestamp}</div>`;
+    bubble.innerHTML = html;
+    wrapper.appendChild(bubble);
+
+    if(isSent){
+        const a = document.createElement('a');
+        a.href="#";
+        a.className="icon-link icon-link-hover text-danger text-decoration-none delete-btn delete";
+        a.dataset.id=id;
+        a.setAttribute('data-bs-toggle','modal');
+        a.setAttribute('data-bs-target','#deleteModal');
+        a.innerHTML='<i class="fas fa-trash"></i>';
+        a.addEventListener('click', handleDeleteClick);
+        wrapper.appendChild(a);
+    }
+
+    chatMessages.appendChild(wrapper);
+    scrollToBottom();
+}
+
+// --- DELETE ---
+
+// Lors du clic sur l'icône delete (les liens ont data-id="{{ message.id }}")
+// on enregistre l'id et on ouvre le modal (Bootstrap le fait via data-bs-*)
+function handleDeleteClick(e){
+    e.preventDefault();
+    messageIdToDelete = this.dataset.id;
+    console.log("me" + messageIdToDelete)
+    // focus sur le bouton pour accessibilité si voulu
+    // document.getElementById('confirmDeleteBtn').focus();
+}
+document.querySelectorAll('.delete-btn').forEach(link => link.addEventListener('click', handleDeleteClick));
+
+// Bouton confirmer suppression dans le modal
+document.getElementById('confirmDeleteBtn').addEventListener('click', ()=>{
+    if(!messageIdToDelete) return;
+
+    // on blur le bouton pour éviter le warning aria-hidden
+    const btn = document.getElementById('confirmDeleteBtn');
+    if(btn) btn.blur();
+
+    // envoi AU SERVEUR : server supprime en base et broadcast
+    chatSocket.send(JSON.stringify({
+        action: 'delete_message',
+        message_id: messageIdToDelete
+    }));
+
+    // vider la variable et fermer le modal proprement
+    messageIdToDelete = null;
+    const modalEl = document.getElementById('deleteModal');
+    const bsModal = bootstrap.Modal.getInstance(modalEl);
+    if(bsModal) bsModal.hide();
+});
+// --- SEND MESSAGE ---
+function sendMessage(){
+    const messageText = messageInput.value.trim();
+    if(selectedFile){
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('room', roomName);
+        fetch("{% url 'upload_file' %}",{
+            method:'POST',
+            headers:{'X-CSRFToken':'{{ csrf_token }}'},
+            body: formData
+        }).then(res=>res.json()).then(data=>{
+            if(data.status==='success'){
+                if(messageText){
+                    chatSocket.send(JSON.stringify({'message':messageText,'action':'message'}));
+                }
+                selectedFile=null;
+                filePreview.innerHTML='';
+                messageInput.value='';
+            }else{alert(data.message);}
+        }).catch(err=>console.error(err));
+    }else if(messageText){
+        chatSocket.send(JSON.stringify({'message':messageText,'action':'message'}));
+        messageInput.value='';
+    }
+}
+sendButton.onclick = sendMessage;
+messageInput.addEventListener('keypress', e=>{
+    if(e.key==='Enter'){e.preventDefault(); sendMessage();}
+});
+
+// --- FILE UPLOAD ---
+fileInput.addEventListener('change', function(){
+    filePreview.innerHTML='';
     selectedFile = this.files[0];
-    if (!selectedFile) return;
-
+    if(!selectedFile) return;
     const p = document.createElement('p');
-    p.textContent = '📎 ' + selectedFile.name;
+    p.textContent='📎 '+selectedFile.name;
     filePreview.appendChild(p);
-
-    if (selectedFile.type.startsWith('image/')) {
+    if(selectedFile.type.startsWith('image/')){
         const img = document.createElement('img');
         img.src = URL.createObjectURL(selectedFile);
-        img.style.maxWidth = '100px';
-        img.style.maxHeight = '80px';
-        img.style.marginTop = '4px';
+        img.style.maxWidth='100px';
+        img.style.maxHeight='80px';
+        img.style.marginTop='4px';
         filePreview.appendChild(img);
     }
 });
 
-// Fonction pour envoyer message + fichier
-function sendMessage() {
-    const messageText = messageInput.value.trim();
-
-    // Création de FormData pour l'upload si fichier
-    if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('room', roomName);
-
-        fetch("{% url 'upload_file' %}", {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // Envoyer aussi le texte si présent
-                if(messageText){
-                    chatSocket.send(JSON.stringify({
-                        'message': messageText,
-                        'action': 'message'
-                    }));
-                }
-                selectedFile = null;
-                filePreview.innerHTML = '';
-                messageInput.value = '';
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(err => console.error(err));
+// --- EMOJI ---
+emojiButton.addEventListener('click', ()=>{
+    emojiPicker.style.display = (emojiPicker.style.display==='none'||emojiPicker.style.display==='') ? 'block' : 'none';
+});
+emojiPicker.addEventListener('emoji-click', event=>{
+    messageInput.value += event.detail.unicode;
+});
+document.addEventListener('click', e=>{
+    if(!emojiButton.contains(e.target) && !emojiPicker.contains(e.target)){
+        emojiPicker.style.display='none';
     }
-    else if(messageText) {
-        chatSocket.send(JSON.stringify({
-            'message': messageText,
-            'action': 'message',
-        }));
-        messageInput.value = '';
-    }
-}
-    sendButton.onclick = sendMessage;
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+});
+
+// --- MENU ---
 const menuToggle = document.getElementById('menuToggle');
 const menuDropdown = document.getElementById('menuDropdown');
-
-menuToggle.addEventListener('click', () => {
-    menuDropdown.style.display = menuDropdown.style.display === 'block' ? 'none' : 'block';
+menuToggle.addEventListener('click', ()=>{menuDropdown.style.display=menuDropdown.style.display==='block'?'none':'block';});
+document.addEventListener('click', e=>{
+    if(!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) menuDropdown.style.display='none';
 });
 
-// Fermer le menu si on clique ailleurs
-document.addEventListener('click', (e) => {
-    if (!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) {
-        menuDropdown.style.display = 'none';
+// --- LEAVE GROUP ---
+function leaveGroup(){
+    if(confirm("Êtes-vous sûr de vouloir quitter ce salon ?")){
+        chatSocket.send(JSON.stringify({'action':'leave_group'}));
     }
-});
-// quiter le group
-    function leaveGroup() {
-        if (confirm("Êtes-vous sûr de vouloir quitter ce salon ?")) {
-            console.log("Envoi de la demande pour quitter le salon...");
-            chatSocket.send(JSON.stringify({
-                'action': 'leave_group'
-            }));
-        }
+}
+
+// --- WEBSOCKET ---
+chatSocket.onmessage = function(e){
+    const data = JSON.parse(e.data);
+    if(data.type==='message'){
+        addMessage(data.username, data.message, data.timestamp, data.id);
     }
-
-    function rebuildMemberList(members) {
-        const listContainer = document.getElementById('member-list-items');
-        if (!listContainer) return;
-        // Vider le conteneur avant de le remplir
-        listContainer.innerHTML = '';
-
-        if (!members || members.length === 0) {
-            //recrée le message "Aucun membre"
-            listContainer.innerHTML = '<p class="text-center mt-2 text-secondary">Aucun Membre disponible</p>';
-            return;
-        }
-
-        // reconstruit la liste
-        members.forEach(member => {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'user-list-item';
-            itemDiv.id = `member-item-${member.username}`;
-
-            let itemHtml = `
-                <div class="chat-avatar"><i class="fas fa-user"></i></div>
-                <div class="chat-info">
-                    <div class="chat-name">${escapeHtml(member.username)}</div>
-                </div>
-            `;
-
-            if (username === adminUsername && member.username !== adminUsername) {
-                itemHtml += `
-                    <button type="button" class="remove-btn"
-                            onclick="removeMember('${escapeHtml(member.username)}')">
-                        <i class="fa-solid fa-circle-minus"></i>
-                    </button>
-                `;
-            }
-            itemDiv.innerHTML = itemHtml;
-            listContainer.appendChild(itemDiv);
-        });
+    if(data.type==='delete_message'){
+        const msg = document.getElementById("msg-"+data.message_id);
+        if(msg) msg.remove();
     }
-
-    function removeMember(usernameToRemove) {
-        if (confirm(`Êtes-vous sûr de vouloir retirer ${usernameToRemove} du salon ?`)) {
-            console.log(`Envoi de la demande de suppression pour: ${usernameToRemove}`);
-            chatSocket.send(JSON.stringify({
-                'action': 'remove_member',
-                'username': usernameToRemove
-            }));
-
-            var modalEl = document.getElementById('membreItemModal');
-            var modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) {
-                 modal.hide();
-            }
-        }
+    if(data.type==='members_update'){
+        const countElem=document.getElementById('online-count');
+        if(countElem && data.members_data) countElem.textContent=data.members_data.count;
     }
-
-    function addMember(usernameToAdd) {
-        console.log(`Demande d'ajout pour: ${usernameToAdd}`);
-        chatSocket.send(JSON.stringify({
-            'action': 'add_member',
-            'username': usernameToAdd
-        }));
-
-        // Fermer le modal
-        var modalEl = document.getElementById('membreModal');
-        var modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) {
-             modal.hide();
-        }
-    }
-
-    function afficherModalErreur(message) {
-        // maj le texte du message
-        messageElement.textContent = message;
-        modal.style.display = 'block';
-    }
-    //  fermer le modal
-    spanFermer.onclick = function() {
-        modal.style.display = 'none';
-    }
-    // Fermer aussi si l'utilisateur clique en dehors du contenu
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-
+    scrollToBottom();
+};
+chatSocket.onclose = function(e){console.error('Chat socket closed unexpectedly');};
 </script>
+
+<style>
+.message-wrapper{position:relative;}
+.delete-btn{position:absolute;top:5px;right:5px;display:none;}
+.message-wrapper:hover .delete-btn{display:block;}
+</style>
 {% endblock %}
