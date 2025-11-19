@@ -2,7 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import User
-from .models import Room, Message, PrivateMessage
+from .models import Room, Message, PrivateMessage, Block
 from django.utils.text import slugify
 
 
@@ -293,67 +293,192 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
 class PrivateChatConsumer(AsyncWebsocketConsumer):
-    """Consumer pour les messages privés"""
-    
+    """Consumer pour les messages privés avec gestion du blocage"""
+
     async def connect(self):
         self.user = self.scope['user']
         self.other_username = self.scope['url_route']['kwargs']['username']
-        
+
         if not self.user.is_authenticated:
             await self.close()
             return
-        
+
+        # Vérifier si l'autre utilisateur existe
+        self.other_user = await self.get_other_user()
+        if not self.other_user:
+            await self.close()
+            return
+
         users = sorted([self.user.username, self.other_username])
         self.room_name = f'private_{users[0]}_{users[1]}'
-        
+
         await self.channel_layer.group_add(
             self.room_name,
             self.channel_name
         )
-        
+
         await self.accept()
-    
+
+        # Envoyer le statut de blocage au client
+        block_status = await self.check_block_status()
+        await self.send(text_data=json.dumps({
+            'type': 'block_status',
+            'is_blocking': block_status['is_blocking'],
+            'is_blocked_by': block_status['is_blocked_by']
+        }))
+
     async def disconnect(self, close_code):
         if hasattr(self, 'room_name'):
             await self.channel_layer.group_discard(
                 self.room_name,
                 self.channel_name
             )
-    
+
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message_content = data.get('message', '')
-        
-        if message_content:
-            await self.save_private_message(message_content)
-            
+        action = data.get('action', 'message')
+
+        # Action: Envoyer un message
+        if action == 'message':
+            message_content = data.get('message', '')
+
+            if message_content:
+                # Vérifier si l'utilisateur est bloqué
+                is_blocked = await self.is_blocked_by_other()
+                is_blocking = await self.is_blocking_other()
+
+                if is_blocking:
+                    # L'utilisateur a bloqué l'autre → impossible d'envoyer
+                    await self.send(text_data=json.dumps({
+                        'type': 'error',
+                        'message': 'Vous avez bloqué cet utilisateur. Débloquez-le pour envoyer des messages.'
+                    }))
+                    return
+
+                if is_blocked:
+                    # L'utilisateur est bloqué par l'autre → impossible d'envoyer
+                    await self.send(text_data=json.dumps({
+                        'type': 'error',
+                        'message': 'Impossible d\'envoyer le message.'
+                    }))
+                    return
+
+                # Sauvegarder et envoyer le message
+                await self.save_private_message(message_content)
+
+                await self.channel_layer.group_send(
+                    self.room_name,
+                    {
+                        'type': 'private_message',
+                        'message': message_content,
+                        'sender': self.user.username,
+                        'timestamp': self.get_current_timestamp()
+                    }
+                )
+
+        # Action: Notification de blocage (envoyée depuis le frontend)
+        elif action == 'user_blocked':
+            # Notifier l'autre utilisateur qu'il a été bloqué
             await self.channel_layer.group_send(
                 self.room_name,
                 {
-                    'type': 'private_message',
-                    'message': message_content,
-                    'sender': self.user.username,
-                    'timestamp': self.get_current_timestamp()
+                    'type': 'block_notification',
+                    'blocker': self.user.username,
+                    'message': 'Vous avez été bloqué par cet utilisateur.'
                 }
             )
-    
+
+        # Action: Notification de déblocage
+        elif action == 'user_unblocked':
+            # Notifier l'autre utilisateur qu'il a été débloqué
+            await self.channel_layer.group_send(
+                self.room_name,
+                {
+                    'type': 'unblock_notification',
+                    'unblocker': self.user.username,
+                    'message': 'Vous pouvez à nouveau communiquer avec cet utilisateur.'
+                }
+            )
+
     async def private_message(self, event):
+        """Reçoit et envoie les messages privés"""
         await self.send(text_data=json.dumps({
             'type': 'message',
             'message': event['message'],
             'sender': event['sender'],
             'timestamp': event['timestamp']
         }))
-    
+
+    async def block_notification(self, event):
+        """Notification envoyée à l'utilisateur bloqué"""
+        # Ne pas notifier le bloqueur lui-même
+        if event['blocker'] != self.user.username:
+            await self.send(text_data=json.dumps({
+                'type': 'blocked',
+                'message': event['message']
+            }))
+
+    async def unblock_notification(self, event):
+        """Notification envoyée à l'utilisateur débloqué"""
+        # Ne pas notifier le débloqueur lui-même
+        if event['unblocker'] != self.user.username:
+            await self.send(text_data=json.dumps({
+                'type': 'unblocked',
+                'message': event['message']
+            }))
+
+    @database_sync_to_async
+    def get_other_user(self):
+        """Récupère l'autre utilisateur"""
+        from django.contrib.auth.models import User
+        try:
+            return User.objects.get(username=self.other_username)
+        except User.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def is_blocking_other(self):
+        """Vérifie si self.user bloque other_user"""
+        return Block.objects.filter(
+            blocker=self.user,
+            blocked=self.other_user
+        ).exists()
+
+    @database_sync_to_async
+    def is_blocked_by_other(self):
+        """Vérifie si self.user est bloqué par other_user"""
+        return Block.objects.filter(
+            blocker=self.other_user,
+            blocked=self.user
+        ).exists()
+
+    @database_sync_to_async
+    def check_block_status(self):
+        """Vérifie le statut de blocage complet"""
+        is_blocking = Block.objects.filter(
+            blocker=self.user,
+            blocked=self.other_user
+        ).exists()
+
+        is_blocked_by = Block.objects.filter(
+            blocker=self.other_user,
+            blocked=self.user
+        ).exists()
+
+        return {
+            'is_blocking': is_blocking,
+            'is_blocked_by': is_blocked_by
+        }
+
     @database_sync_to_async
     def save_private_message(self, message_content):
-        receiver = User.objects.get(username=self.other_username)
+        from .models import PrivateMessage
         PrivateMessage.objects.create(
             sender=self.user,
-            receiver=receiver,
+            receiver=self.other_user,
             content=message_content
         )
-    
+
     def get_current_timestamp(self):
         from datetime import datetime
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')

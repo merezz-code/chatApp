@@ -54,6 +54,71 @@ class PrivateMessage(models.Model):
         return f'{self.sender.username} to {self.receiver.username}: {self.content[:50]}'
 
 
+# Ajoutez ces modèles APRÈS la classe UserProfile dans models.py
+
+class Block(models.Model):
+    """
+    Gestion des blocages entre utilisateurs
+    Option 2: Bloquer = Conversation visible mais communication bloquée
+    """
+    blocker = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='blocking'
+    )
+    blocked = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='blocked_by'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('blocker', 'blocked')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.blocker.username} bloque {self.blocked.username}'
+
+
+class Report(models.Model):
+    """
+    Signalement d'utilisateurs (action administrative)
+    Signaler + Bloquer = Masque la conversation complètement
+    """
+    REASON_CHOICES = [
+        ('spam', 'Spam ou publicité'),
+        ('harassment', 'Harcèlement'),
+        ('inappropriate', 'Contenu inapproprié'),
+        ('fake', 'Faux profil'),
+        ('other', 'Autre'),
+    ]
+
+    reporter = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reports_made'
+    )
+    reported_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reports_received'
+    )
+    reason = models.CharField(
+        max_length=20,
+        choices=REASON_CHOICES,
+        default='other'
+    )
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_resolved = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.reporter.username} signale {self.reported_user.username} - {self.get_reason_display()}'
+
 class UserProfile(models.Model):
     """Profil utilisateur étendu"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -74,4 +139,28 @@ class UserProfile(models.Model):
             receiver=self.user,
             is_read=False
         ).count()
+
+    def is_blocking(self, other_user):
+        """Vérifie si self.user bloque other_user"""
+        from django.apps import apps
+        Block = apps.get_model('chat', 'Block')
+        return Block.objects.filter(blocker=self.user, blocked=other_user).exists()
+
+    def is_blocked_by(self, other_user):
+        """Vérifie si self.user est bloqué par other_user"""
+        from django.apps import apps
+        Block = apps.get_model('chat', 'Block')
+        return Block.objects.filter(blocker=other_user, blocked=self.user).exists()
+
+    def has_reported(self, other_user):
+        """Vérifie si self.user a signalé other_user"""
+        from django.apps import apps
+        Report = apps.get_model('chat', 'Report')
+        return Report.objects.filter(reporter=self.user, reported_user=other_user).exists()
+
+    def should_hide_conversation(self, other_user):
+        """
+        Option 2: Cache la conversation si l'utilisateur a SIGNALÉ + BLOQUÉ
+        """
+        return self.is_blocking(other_user) and self.has_reported(other_user)
 

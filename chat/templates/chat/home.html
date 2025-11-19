@@ -31,26 +31,45 @@
             {% if private_chats %}
                 <div class="section-divider"><i class="fas fa-user"></i> MESSAGES PRIVÉS</div>
                 {% for chat in private_chats %}
-                    <a href="{% url 'private_chat' chat.user.username %}" class="chat-item">
-                        <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                    <a href="{% url 'private_chat' chat.user.username %}" class="chat-item {% if chat.is_blocked %}chat-item-blocked{% endif %}">
+                        <div class="chat-avatar">
+                            <i class="fas fa-user"></i>
+                            {% if chat.is_blocked %}
+                                <span class="blocked-indicator">🚫</span>
+                            {% endif %}
+                        </div>
                         <div class="chat-info">
-                            <div class="chat-name">{{ chat.user.username }}</div>
+                            <div class="chat-name">
+                                {{ chat.user.username }}
+                                {% if chat.is_blocked %}
+                                    <span class="badge bg-danger ms-1" style="font-size: 0.7rem;">Bloqué</span>
+                                {% endif %}
+                            </div>
                             <div class="chat-description">
-                                {% if chat.user.profile.is_online %}
+                                {% if chat.is_blocked %}
+                                    <span class="text-muted"><i class="fas fa-ban"></i> Communication bloquée</span>
+                                {% elif chat.user.profile.is_online %}
                                     <span class="status-online"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> En ligne</span>
                                 {% else %}
                                     <span class="status-offline">Hors ligne</span>
                                 {% endif %}
                             </div>
                         </div>
-                    {% if chat.unread_count > 0%}
-                                   <div class="chat-meta">
-                        <div class="chat-badge">{{ chat.unread_count }}</div>
-                    </div>
-                                {% endif %}
-
+                        <div class="chat-meta">
+                            {% if chat.unread_count > 0 and not chat.is_blocked %}
+                                <div class="chat-badge">{{ chat.unread_count }}</div>
+                            {% endif %}
+                        </div>
                     </a>
                 {% endfor %}
+            {% endif %}
+
+            {% if not user_rooms and not private_chats %}
+                <div class="empty-chat-list">
+                    <i class="fas fa-inbox"></i>
+                    <p>Aucune conversation</p>
+                    <small>Cliquez sur + pour démarrer</small>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -81,7 +100,6 @@
                 <i class="fas fa-plus-circle"></i>
             </button>
       </div>
-
 
         <!-- Liste des salons -->
         {% if rooms %}
@@ -121,4 +139,56 @@
     </div>
   </div>
 </div>
+
+<style>
+/* Styles pour les conversations bloquées */
+.chat-item-blocked {
+    opacity: 0.7;
+    background-color: rgba(220, 53, 69, 0.05) !important;
+}
+
+.chat-item-blocked:hover {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.blocked-indicator {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 0.8rem;
+    background: white;
+    border-radius: 50%;
+    padding: 2px;
+}
+
+.chat-avatar {
+    position: relative;
+}
+
+.empty-chat-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #8696a0;
+    text-align: center;
+}
+
+.empty-chat-list i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.empty-chat-list p {
+    margin: 5px 0;
+    font-size: 1.1rem;
+}
+
+.empty-chat-list small {
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+</style>
 {% endblock %}
