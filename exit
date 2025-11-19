@@ -1,0 +1,211 @@
+[33mcommit 4056621e28fefe488b1d6561ec30253d1dece552[m[33m ([m[1;36mHEAD -> [m[1;32mdev2[m[33m, [m[1;31morigin/dev2[m[33m)[m
+Author: NassimaBouchkara <nassimabouchkara@gmail.com>
+Date:   Thu Nov 20 00:00:01 2025 +0100
+
+    block and unblock and report  user
+
+[33mcommit 32d6ea1ced89fe8dfd10c12a394b4918488d46df[m
+Author: NassimaBouchkara <nassimabouchkara@gmail.com>
+Date:   Wed Nov 19 22:40:34 2025 +0100
+
+    test
+
+[33mcommit dea99cb754239e84a988ffa196069f582906d194[m[33m ([m[1;32msoso[m[33m)[m
+Merge: 6446e06 70f28e7
+Author: souad barabad <60435988+souadbarabad@users.noreply.github.com>
+Date:   Tue Nov 11 15:00:21 2025 +0100
+
+    ajout de message d'erreur 'admin quite le group'
+    
+    ajout de message d'erreur 'admin quite le group'
+
+[33mcommit 70f28e72bb510972a3a659d758ad366ed107e916[m
+Author: souad barabad <souad.barabad@gmail.com>
+Date:   Tue Nov 11 14:58:45 2025 +0100
+
+    ajout de message d'erreur 'admin quite le group'
+
+[33mcommit 6446e06483d17a4556a27d2f1be7ca16aceb3fc8[m
+Merge: 75ca656 41d72a8
+Author: souad barabad <60435988+souadbarabad@users.noreply.github.com>
+Date:   Tue Nov 11 01:31:13 2025 +0100
+
+    Merge pull request #2 from souadbarabad/dev_2
+    
+    Dev 2
+
+[33mcommit 41d72a8c745d853ba8a4dc1ab88c0942eeb65868[m
+Merge: 5f4e44a 75ca656
+Author: souad barabad <60435988+souadbarabad@users.noreply.github.com>
+Date:   Tue Nov 11 01:20:03 2025 +0100
+
+    Merge branch 'main' into dev_2
+
+[33mcommit 5f4e44ab23315ff7fbf886223be05a3cd6282af0[m
+Author: souad barabad <souad.barabad@gmail.com>
+Date:   Tue Nov 11 00:06:32 2025 +0100
+
+    lister, retirer et ajouter  les membres
+
+[33mcommit 3d809b9c1b5ce5c7b9664876b417aec66b6fdbd1[m
+Author: souad barabad <souad.barabad@gmail.com>
+Date:   Mon Nov 10 23:03:59 2025 +0100
+
+    lister, retirer et ajouter  les membres
+
+[33mcommit 75ca656d8d3f6ac2da40cd29c25f9a89a10ab457[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Mon Nov 10 22:32:07 2025 +0100
+
+    vu
+
+[33mcommit b8d826321b20b157f2023789bf32318132807c84[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Mon Nov 10 16:40:00 2025 +0100
+
+    supprime_message
+
+[33mcommit 2c8e0d01becea9acdbdd6e278a1fdc6051acf3e5[m
+Author: souad barabad <souad.barabad@gmail.com>
+Date:   Sun Nov 9 14:00:09 2025 +0100
+
+    affiche les salon liee a un user
+
+[33mcommit 117e0d89e92deac571dc4e306e9300d6cd35c64d[m
+Merge: 3a43851 dac1dc8
+Author: souad barabad <souad.barabad@gmail.com>
+Date:   Sun Nov 9 13:36:42 2025 +0100
+
+    Merge branch 'main' of https://github.com/merezz-code/chatApp
+
+[33mcommit 3a438517c6526d6ad90a736686b02010b48cb019[m
+Merge: 51ac932 09afd95
+Author: souad barabad <souad.barabad@gmail.com>
+Date:   Sun Nov 9 00:05:17 2025 +0100
+
+    Merge branch 'souadbarabad-dev_1'
+
+[33mcommit 09afd951ba1c024b246747eb0ca318dcd0d894cc[m
+Author: souad barabad <souad.barabad@gmail.com>
+Date:   Fri Nov 7 00:40:18 2025 +0100
+
+    leaveGroup et AddMembre + fix css files
+
+[33mcommit dac1dc8f365edb025feec617516390f517330c32[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Thu Nov 6 22:46:31 2025 +0100
+
+    rooms
+
+[33mcommit 51ac9321ee22d8d3499e46551b117af27bc14bf3[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Thu Nov 6 13:09:17 2025 +0100
+
+    ajout
+
+[33mcommit 9b708c54f36f09e1204c096b2d831482bd687dfc[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Tue Nov 4 22:05:10 2025 +0100
+
+    chatprive
+
+[33mcommit ff052841ce254dbf461d4abce6ddddf8a8ef7d62[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Sun Nov 2 14:04:10 2025 +0100
+
+    regler message
+
+[33mcommit 84b62c87d0d753f27e1d3fb4ac837df29def5369[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Fri Oct 31 14:56:44 2025 +0100
+
+    update
+
+[33mcommit 0fc3b895fe877230ac2c47bf79ca91e174da8bdd[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Fri Oct 31 14:22:59 2025 +0100
+
+    File
+
+[33mcommit 73c153cab895af95ddc2d16dc2dff56f97ec8fee[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Fri Oct 31 11:35:27 2025 +0100
+
+    emoji
+
+[33mcommit eac759b7953c7d66b93cf276d4bf4f8d41b90f07[m
+Author: merezz-code <ezzouhairimeryem@gmail.com>
+Date:   Thu Oct 30 21:36:36 2025 +0100
+
+    test
+
+[33mcommit 94b8c9fcd8fa13862dbb87876d0082c50375fc8f[m
+Author: ezzouhairimerye <34064211-ezzouhairimerye@users.noreply.replit.com>
+Date:   Wed Oct 29 15:34:20 2025 +0000
+
+    Update the chat interface to match WhatsApp's design with orange accents
+    
+    No changes were made to the code.
+    
+    Replit-Commit-Author: Agent
+    Replit-Commit-Session-Id: 1b547ba7-4c61-4801-92ac-93befb8f69c4
+    Replit-Commit-Checkpoint-Type: full_checkpoint
+    Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/bbe999e5-d3c1-4a36-9fd6-cbd622db339a/1b547ba7-4c61-4801-92ac-93befb8f69c4/EubwLfO
+
+[33mcommit c367ccafa1a7f1468e5d525126c7cb74316761ff[m
+Author: ezzouhairimerye <34064211-ezzouhairimerye@users.noreply.replit.com>
+Date:   Wed Oct 29 15:33:11 2025 +0000
+
+    Update the application's visual theme to an orange color scheme
+    
+    No changes to apply.
+    
+    Replit-Commit-Author: Agent
+    Replit-Commit-Session-Id: 1b547ba7-4c61-4801-92ac-93befb8f69c4
+    Replit-Commit-Checkpoint-Type: full_checkpoint
+    Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/bbe999e5-d3c1-4a36-9fd6-cbd622db339a/1b547ba7-4c61-4801-92ac-93befb8f69c4/EubwLfO
+
+[33mcommit 6f92c534d34ad1949021d2f18aafbae88a6408ab[m
+Author: ezzouhairimerye <34064211-ezzouhairimerye@users.noreply.replit.com>
+Date:   Wed Oct 29 15:32:38 2025 +0000
+
+    Apply WhatsApp-like design with an orange theme and dark mode
+    
+    Update frontend templates and CSS to implement a new design with orange accents, dark mode, and a WhatsApp-inspired layout.
+    
+    Replit-Commit-Author: Agent
+    Replit-Commit-Session-Id: 1b547ba7-4c61-4801-92ac-93befb8f69c4
+    Replit-Commit-Checkpoint-Type: intermediate_checkpoint
+    Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/bbe999e5-d3c1-4a36-9fd6-cbd622db339a/1b547ba7-4c61-4801-92ac-93befb8f69c4/EubwLfO
+
+[33mcommit 24807f5bd1b757124343317d5ce4f51287bdbd88[m
+Author: ezzouhairimerye <34064211-ezzouhairimerye@users.noreply.replit.com>
+Date:   Wed Oct 29 15:15:46 2025 +0000
+
+    Update project documentation and settings for deployment
+    
+    Update replit.md to reflect completed features, project architecture, and usage instructions, and add CSRF_TRUSTED_ORIGINS to settings.py for Replit deployment.
+    
+    Replit-Commit-Author: Agent
+    Replit-Commit-Session-Id: 1b547ba7-4c61-4801-92ac-93befb8f69c4
+    Replit-Commit-Checkpoint-Type: full_checkpoint
+    Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/bbe999e5-d3c1-4a36-9fd6-cbd622db339a/1b547ba7-4c61-4801-92ac-93befb8f69c4/mtZ5fM7
+
+[33mcommit 3ae7605b4f8b30e69d91460beabfe581815ea21c[m
+Author: ezzouhairimerye <34064211-ezzouhairimerye@users.noreply.replit.com>
+Date:   Wed Oct 29 15:13:28 2025 +0000
+
+    Add core chat application features and real-time functionality
+    
+    Implement Django chat application with real-time messaging, user authentication, room management, and private chats using Django Channels.
+    
+    Replit-Commit-Author: Agent
+    Replit-Commit-Session-Id: 1b547ba7-4c61-4801-92ac-93befb8f69c4
+    Replit-Commit-Checkpoint-Type: intermediate_checkpoint
+    Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/bbe999e5-d3c1-4a36-9fd6-cbd622db339a/1b547ba7-4c61-4801-92ac-93befb8f69c4/NcFLFtz
+
+[33mcommit 886f473cf786b4ee76452a39cb4a6d2ccaee9109[m
+Author: ezzouhairimerye <34064211-ezzouhairimerye@users.noreply.replit.com>
+Date:   Wed Oct 29 15:04:46 2025 +0000
+
+    Initial commit

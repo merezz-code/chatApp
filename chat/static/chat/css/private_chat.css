@@ -389,8 +389,21 @@
     transition: opacity 0.3s;
     font-size: 0.85rem;
 }
+.delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: none; /* caché par défaut */
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
 
 .tooltip-custom:hover .tooltiptext {
     visibility: visible;
     opacity: 1;
+}
+.message-wrapper:hover .delete-btn {
+    padding: 5px;
+    display: block; /* visible au survol */
 }
