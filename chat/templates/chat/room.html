@@ -120,7 +120,78 @@
     </div>
   </div>
 </div>
+<div class="modal fade" id="membreModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-sidebar">
+            {% if membre_contact %}
+                <div class="modal-chat-list mt-2">
+                    <div class="section-divider"><i class="fas fa-user"></i> Utilisateurs</div>
+                    {% for user in membre_contact %}
+                        <div class="user-list-item">
+                            <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                            <div class="chat-info">
+                                <div class="chat-name">{{ user.username }}</div>
+                            </div>
 
+                            <button type="button" class="add-user-btn"
+                                    onclick="addMember('{{ user.username }}')">
+                                <i class="fas fa-plus-circle"></i>
+                            </button>
+                            </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-center mt-2 text-secondary">Aucun utilisateur disponible</p>
+            {% endif %}
+                <div class="modal-footer">
+                    <button class="btn-cancel" data-bs-dismiss="modal">Annuler</button>
+                </div>
+          </div>
+</div>
+</div>
+
+<div class="modal fade" id="membreItemModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-sidebar">
+             <div class="modal-chat-list mt-2" id="member-list-container">
+                 <div class="section-divider"><i class="fas fa-user"></i> Les membres du group </div>
+                 <div id="member-list-items">
+                     {% if members_list %}
+                       {% for member in members_list %}
+                             <div class="user-list-item">
+                                 <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                                 <div class="chat-info">
+                                     <div class="chat-name">{{ member.username }}</div>
+                                 </div>
+                                 {% if user == room.created_by and member != room.created_by %}
+                                     <button onclick="removeMember('{{ member.username }}')"
+                                             class="remove-btn"
+                                             value="{{ member }}">
+                                         <i class="fa-solid fa-circle-minus"></i>
+                                     </button>
+                                 {% endif %}
+                             </div>
+                         {% endfor %}
+                     {% else %}
+                         <p class="text-center mt-2 text-secondary">Aucun Membre disponible</p>
+                     {% endif %}
+
+                 </div>
+             </div>
+            <div class="modal-footer">
+                    <button class="btn-cancel" data-bs-dismiss="modal">Annuler</button>
+             </div>
+        </div>
+    </div>
+</div>
+
+<div id="monModalErreur" class="modal-overlay">
+    <div class="modal-contenu">
+        <span class="modal-fermer" id="fermerModal">&times;</span>
+        <h3>Erreur</h3>
+        <p id="modalMessageTexte"></p>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -141,8 +212,13 @@ let messageIdToDelete = null;
 
 const chatSocket = new WebSocket(
     (window.location.protocol === 'https:' ? 'wss:' : 'ws:') +
-    "//" + window.location.host + "/ws/chat/room/" + roomName + "/"
+    "//" + window.location.host + "/ws/chat/room/" + encodeURIComponent(roomName) + "/"
 );
+
+
+const modal = document.getElementById('monModalErreur');
+const messageElement = document.getElementById('modalMessageTexte');
+const spanFermer = document.getElementById('fermerModal');
 
 // --- UTILS ---
 function escapeHtml(text){
@@ -187,41 +263,50 @@ function addMessage(user, message, timestamp, id){
 }
 
 // --- DELETE ---
-
-// Lors du clic sur l'icône delete (les liens ont data-id="{{ message.id }}")
-// on enregistre l'id et on ouvre le modal (Bootstrap le fait via data-bs-*)
 function handleDeleteClick(e){
     e.preventDefault();
-    messageIdToDelete = this.dataset.id;
-    console.log("me" + messageIdToDelete)
-    // focus sur le bouton pour accessibilité si voulu
-    // document.getElementById('confirmDeleteBtn').focus();
+    const id = this.dataset.id;
+    if(!id){
+        console.error("Impossible de récupérer l'ID du message !");
+        return;
+    }
+    messageIdToDelete = id;
 }
+
 document.querySelectorAll('.delete-btn').forEach(link => link.addEventListener('click', handleDeleteClick));
 
-// Bouton confirmer suppression dans le modal
 document.getElementById('confirmDeleteBtn').addEventListener('click', ()=>{
     if(!messageIdToDelete) return;
 
-    // on blur le bouton pour éviter le warning aria-hidden
     const btn = document.getElementById('confirmDeleteBtn');
-    if(btn) btn.blur();
+    if(btn) btn.blur(); // éviter warning aria-hidden
 
-    // envoi AU SERVEUR : server supprime en base et broadcast
+   if (messageIdToDelete === undefined || messageIdToDelete === null) {
+    console.error("Erreur : messageIdToDelete est undefined ou null !");
+    afficherModalErreur("Impossible de supprimer ce message. ID invalide.");
+    return;  // on n’envoie pas le message
+}
+
+if(chatSocket.readyState === WebSocket.OPEN){
     chatSocket.send(JSON.stringify({
         action: 'delete_message',
         message_id: messageIdToDelete
     }));
+} else {
+    afficherModalErreur("Connexion au chat non établie. Réessayez plus tard.");
+}
 
-    // vider la variable et fermer le modal proprement
+
     messageIdToDelete = null;
     const modalEl = document.getElementById('deleteModal');
     const bsModal = bootstrap.Modal.getInstance(modalEl);
     if(bsModal) bsModal.hide();
 });
+
 // --- SEND MESSAGE ---
 function sendMessage(){
     const messageText = messageInput.value.trim();
+
     if(selectedFile){
         const formData = new FormData();
         formData.append('file', selectedFile);
@@ -232,7 +317,7 @@ function sendMessage(){
             body: formData
         }).then(res=>res.json()).then(data=>{
             if(data.status==='success'){
-                if(messageText){
+                if(messageText && chatSocket.readyState === WebSocket.OPEN){
                     chatSocket.send(JSON.stringify({'message':messageText,'action':'message'}));
                 }
                 selectedFile=null;
@@ -241,8 +326,12 @@ function sendMessage(){
             }else{alert(data.message);}
         }).catch(err=>console.error(err));
     }else if(messageText){
-        chatSocket.send(JSON.stringify({'message':messageText,'action':'message'}));
-        messageInput.value='';
+        if(chatSocket.readyState === WebSocket.OPEN){
+            chatSocket.send(JSON.stringify({'message':messageText,'action':'message'}));
+            messageInput.value='';
+        } else {
+            afficherModalErreur("Connexion au chat non établie. Réessayez plus tard.");
+        }
     }
 }
 sendButton.onclick = sendMessage;
@@ -284,40 +373,163 @@ document.addEventListener('click', e=>{
 // --- MENU ---
 const menuToggle = document.getElementById('menuToggle');
 const menuDropdown = document.getElementById('menuDropdown');
-menuToggle.addEventListener('click', ()=>{menuDropdown.style.display=menuDropdown.style.display==='block'?'none':'block';});
+menuToggle.addEventListener('click', ()=>{
+    menuDropdown.style.display=menuDropdown.style.display==='block'?'none':'block';
+});
+// fermer menu si clic dehors
 document.addEventListener('click', e=>{
     if(!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) menuDropdown.style.display='none';
+});
+// fermer menu si clic sur item
+menuDropdown.querySelectorAll('.menu-item').forEach(item=>{
+    item.addEventListener('click', ()=>{ menuDropdown.style.display='none'; });
 });
 
 // --- LEAVE GROUP ---
 function leaveGroup(){
     if(confirm("Êtes-vous sûr de vouloir quitter ce salon ?")){
-        chatSocket.send(JSON.stringify({'action':'leave_group'}));
+        if(chatSocket.readyState === WebSocket.OPEN){
+            chatSocket.send(JSON.stringify({'action':'leave_group'}));
+        } else {
+            afficherModalErreur("Connexion au chat non établie. Réessayez plus tard.");
+        }
+    }
+}
+
+// --- SYSTEM MESSAGE ---
+function addSystemMessage(message) {
+    const div = document.createElement('div');
+    div.className = 'system-message';
+    div.innerHTML = `<span class="system-message-bubble">${escapeHtml(message)}</span>`;
+    chatMessages.appendChild(div);
+}
+
+// --- MEMBERS MODAL ---
+function rebuildMemberList(members) {
+    const listContainer = document.getElementById('member-list-items');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    if (!members || members.length === 0) {
+        listContainer.innerHTML = '<p class="text-center mt-2 text-secondary">Aucun Membre disponible</p>';
+        return;
+    }
+
+    members.forEach(member => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'user-list-item';
+        itemDiv.id = `member-item-${member.username}`;
+
+        let itemHtml = `
+            <div class="chat-avatar"><i class="fas fa-user"></i></div>
+            <div class="chat-info">
+                <div class="chat-name">${escapeHtml(member.username)}</div>
+            </div>
+        `;
+
+        if (username === adminUsername && member.username !== adminUsername) {
+            itemHtml += `
+                <button type="button" class="remove-btn"
+                        onclick="removeMember('${escapeHtml(member.username)}')">
+                    <i class="fa-solid fa-circle-minus"></i>
+                </button>
+            `;
+        }
+        itemDiv.innerHTML = itemHtml;
+        listContainer.appendChild(itemDiv);
+    });
+}
+
+function removeMember(usernameToRemove) {
+    if(chatSocket.readyState === WebSocket.OPEN){
+        if (confirm(`Êtes-vous sûr de vouloir retirer ${usernameToRemove} du salon ?`)) {
+            console.log(`Envoi de la demande de suppression pour: ${usernameToRemove}`);
+            chatSocket.send(JSON.stringify({
+                'action': 'remove_member',
+                'username': usernameToRemove
+            }));
+            const modalEl = document.getElementById('membreItemModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+    } else {
+        afficherModalErreur("Connexion au chat non établie. Réessayez plus tard.");
+    }
+}
+
+function addMember(usernameToAdd) {
+    if(chatSocket.readyState === WebSocket.OPEN){
+        console.log(`Demande d'ajout pour: ${usernameToAdd}`);
+        chatSocket.send(JSON.stringify({
+            'action': 'add_member',
+            'username': usernameToAdd
+        }));
+        const modalEl = document.getElementById('membreModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    } else {
+        afficherModalErreur("Connexion au chat non établie. Réessayez plus tard.");
+    }
+}
+
+// --- MODAL ERREUR ---
+function afficherModalErreur(message) {
+    messageElement.textContent = message;
+    modal.style.display = 'block';
+}
+
+spanFermer.onclick = function() {
+    modal.style.display = 'none';
+}
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = 'none';
     }
 }
 
 // --- WEBSOCKET ---
-chatSocket.onmessage = function(e){
+chatSocket.onmessage = function(e) {
     const data = JSON.parse(e.data);
-    if(data.type==='message'){
-        addMessage(data.username, data.message, data.timestamp, data.id);
+    if (data.type === 'message') {
+        addMessage(data.username, data.message, data.timestamp);
     }
-    if(data.type==='delete_message'){
-        const msg = document.getElementById("msg-"+data.message_id);
-        if(msg) msg.remove();
+    else if (data.type === 'members_update') {
+        if (data.message) addSystemMessage(data.message);
+
+        const countElement = document.getElementById('online-count');
+        if (countElement && data.members_data) countElement.textContent = data.members_data.count;
+
+        if (data.members_data) rebuildMemberList(data.members_data.members);
+
+        if (data.username_removed === username) {
+            alert("Vous avez été retiré du salon.");
+            window.location.href = "{% url 'home' %}";
+        }
     }
-    if(data.type==='members_update'){
-        const countElem=document.getElementById('online-count');
-        if(countElem && data.members_data) countElem.textContent=data.members_data.count;
+    else if (data.type === 'group_left_you') {
+        alert(data.message);
+        window.location.href = "{% url 'home' %}";
     }
+    else if (data.type === "error"){
+        afficherModalErreur(data.message);
+    }
+    else if(data.type === 'delete_message'){
+    const msgEl = document.getElementById('msg-'+data.message_id);
+    if(msgEl) msgEl.remove();
+}
+
     scrollToBottom();
 };
-chatSocket.onclose = function(e){console.error('Chat socket closed unexpectedly');};
-</script>
 
+chatSocket.onclose = function(e){
+    console.error('Chat socket closed unexpectedly');
+};
+</script>
 <style>
 .message-wrapper{position:relative;}
 .delete-btn{position:absolute;top:5px;right:5px;display:none;}
 .message-wrapper:hover .delete-btn{display:block;}
 </style>
 {% endblock %}
+
+

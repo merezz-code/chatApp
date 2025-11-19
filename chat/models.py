@@ -4,19 +4,22 @@ from django.utils import timezone
 
 
 class Room(models.Model):
-    """Salon de discussion public"""
+    """Salon de discussion public ou privé"""
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_rooms')
     created_at = models.DateTimeField(auto_now_add=True)
     members = models.ManyToManyField(User, related_name='rooms', blank=True)
-    
+
+    # 🔥 Nouveau champ
+    is_private = models.BooleanField(default=False)  # False = Public, True = Privé
+
     class Meta:
         ordering = ['-created_at']
-    
+
     def __str__(self):
-        return self.name
-    
+        return f"{self.name} ({'Privé' if self.is_private else 'Public'})"
+
     def get_online_count(self):
         return self.members.count()
 

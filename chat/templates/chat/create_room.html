@@ -13,24 +13,34 @@
         
         <form method="post">
             {% csrf_token %}
+
             <div class="form-group">
                 <label for="name" class="form-label">Nom du Salon</label>
-                <input type="text" 
-                       class="form-control" 
-                       id="name" 
-                       name="name" 
-                       placeholder="Ex: Gaming, Tech, Général..."
-                       required 
-                       autofocus>
+                <input type="text"
+                    class="form-control"
+                    id="name"
+                    name="name"
+                    placeholder="Ex: Gaming, Tech, Général..."
+                    required
+                    autofocus>
             </div>
-            
+
             <div class="form-group">
                 <label for="description" class="form-label">Description (optionnel)</label>
-                <textarea class="form-control" 
-                          id="description" 
-                          name="description" 
-                          placeholder="Décrivez votre salon...">
-                </textarea>
+                <textarea class="form-control"
+                    id="description"
+                    name="description"
+                    placeholder="Décrivez votre salon..."></textarea>
+            </div>
+
+            <!-- 🔥 Nouveau champ -->
+            <div class="form-group">
+                <label class="form-label">Type de Salon</label>
+
+                <select name="is_private" class="form-control">
+                    <option value="0" selected>Public</option>
+                    <option value="1">Privé</option>
+                </select>
             </div>
             
             <button type="submit" class="btn-submit">

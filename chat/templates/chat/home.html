@@ -1,4 +1,5 @@
 {% extends 'chat/base.html' %}
+
 {% block content %}
 <div class="whatsapp-container">
     <!-- Sidebar -->
@@ -31,25 +32,38 @@
             {% if private_chats %}
                 <div class="section-divider"><i class="fas fa-user"></i> MESSAGES PRIVÉS</div>
                 {% for chat in private_chats %}
-                    <a href="{% url 'private_chat' chat.user.username %}" class="chat-item">
-                        <div class="chat-avatar"><i class="fas fa-user"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-name">{{ chat.user.username }}</div>
-                            <div class="chat-description">
-                                {% if chat.user.profile.is_online %}
-                                    <span class="status-online"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> En ligne</span>
-                                {% else %}
-                                    <span class="status-offline">Hors ligne</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% if chat.unread_count > 0%}
-                                   <div class="chat-meta">
-                        <div class="chat-badge">{{ chat.unread_count }}</div>
-                    </div>
-                                {% endif %}
+                   <a href="{% url 'private_chat' chat.user.username %}" class="chat-item">
 
-                    </a>
+    <div class="chat-avatar"><i class="fas fa-user"></i></div>
+    <div class="chat-info">
+        <div class="chat-name">{{ chat.user.username }}</div>
+        <div class="chat-description">
+            {% if chat.user.profile.is_online %}
+                <span class="status-online"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> En ligne</span>
+            {% else %}
+                <span class="status-offline">Hors ligne</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if chat.unread_count > 0 %}
+        <div class="chat-meta">
+            <div class="chat-badge">{{ chat.unread_count }}</div>
+        </div>
+    {% endif %}
+
+
+
+</a>
+                        <div class="chat-meta">
+      <span class="menu-icon">&#8942;</span>
+      <div class="dropdown-menu">
+        <a href="#">Ouvrir</a>
+        <a href="#">Supprimer</a>
+        <a href="#">Archiver</a>
+      </div>
+    </div>
+
                 {% endfor %}
             {% endif %}
         </div>
@@ -81,22 +95,41 @@
                 <i class="fas fa-plus-circle"></i>
             </button>
       </div>
-
-
         <!-- Liste des salons -->
         {% if rooms %}
-            <div class="modal-chat-list">
-                <div class="section-divider"><i class="fas fa-hashtag"></i> Salons disponibles</div>
-                {% for room in rooms %}
-                    <a href="{% url 'room_detail' room.name %}">
-                        <div class="chat-avatar"><i class="fas fa-users"></i></div>
-                        <div class="chat-info">
-                            <div class="chat-name">{{ room.name }}</div>
-                        </div>
-                    </a>
-                {% endfor %}
+    <div class="modal-chat-list">
+        <div class="section-divider"><i class="fas fa-hashtag"></i> Salons disponibles</div>
+
+        {% for room in rooms %}
+            <div class="d-flex justify-content-between align-items-center p-2 room-item">
+
+                <!-- Lien vers la salle -->
+                <a href="{% url 'room_detail' room.name %}" class="d-flex align-items-center flex-grow-1">
+                    <div class="chat-avatar"><i class="fas fa-users"></i></div>
+                    <div class="chat-info">
+                        <div class="chat-name">{{ room.name }}</div>
+                    </div>
+                </a>
+
+                <!-- Bouton Rejoindre : seulement pour les salons publics -->
+               {% if room.is_private and user not in room.members.all %}
+                    <span class="badge bg-secondary ms-2">Privée</span>
+
+               {% else %}
+                     <form action="{% url 'join_room' room.name %}" method="POST">
+
+                        {% csrf_token %}
+
+                        <button class="btn-new-chat">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                    </form>
+               {% endif %}
             </div>
-        {% endif %}
+        {% endfor %}
+    </div>
+{% endif %}
+
 
         <!-- Liste des utilisateurs disponibles -->
         {% if users_not_chatted %}
@@ -121,4 +154,30 @@
     </div>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+  // Sélectionner tous les containers de menu
+  const menus = document.querySelectorAll('.menu-container');
+
+  menus.forEach(menu => {
+    const icon = menu.querySelector('.menu-icon');
+    const dropdown = menu.querySelector('.dropdown-menu');
+
+    // Toggle menu au clic
+    icon.addEventListener('click', (e) => {
+      e.stopPropagation(); // éviter propagation au document
+      const isOpen = dropdown.style.display === 'block';
+      // fermer tous les autres menus
+      document.querySelectorAll('.dropdown-menu').forEach(d => d.style.display = 'none');
+      dropdown.style.display = isOpen ? 'none' : 'block';
+    });
+  });
+
+  // Fermer le menu si clic en dehors
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.dropdown-menu').forEach(d => d.style.display = 'none');
+  });
+</script>
+
 {% endblock %}

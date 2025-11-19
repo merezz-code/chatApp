@@ -1,59 +1,115 @@
 {% extends 'chat/base.html' %}
-
 {% block title %}Bienvenue - MNS Chat App{% endblock %}
 
 {% block content %}
-<div class="text-center py-5">
+
+<style>
+    .home-hero {
+
+        padding: 80px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .home-title {
+        color: var(--text-primary);
+        font-weight: 700;
+    }
+
+    .home-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.2rem;
+    }
+
+    .home-card {
+        border: none;
+        border-radius: 14px;
+        background: var(--bg-sidebar);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .home-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    }
+
+    .home-card i {
+        color: var(--orange-primary);
+    }
+
+    .home-btn-main {
+        background: var(--orange-primary);
+        border: none;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        transition: background .2s ease;
+    }
+    .home-btn-main:hover {
+        background: var(--orange-dark);
+        color: white;
+    }
+
+    .home-btn-outline {
+        border: 2px solid var(--orange-primary);
+        color: var(--orange-primary);
+        padding: 12px 25px;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        transition: all .2s ease;
+    }
+    .home-btn-outline:hover {
+        background: var(--orange-primary);
+        color: white;
+    }
+</style>
+
+<div class="home-hero text-center">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <i class="fas fa-comments fa-4x text-primary mb-4"></i>
-                <h1 class="display-4 mb-4">Bienvenue sur MNS Chat</h1>
-                <p class="lead mb-5">
-                    Rejoignez notre communauté et discutez en temps réel avec d'autres utilisateurs.
-                    Créez vos propres salons de discussion et partagez vos idées instantanément.
-                </p>
-                
-                <div class="row mb-5">
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <i class="fas fa-bolt fa-2x text-warning mb-3"></i>
-                                <h5>Messages instantanés</h5>
-                                <p class="text-muted">Communication en temps réel avec WebSocket</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <i class="fas fa-users fa-2x text-success mb-3"></i>
-                                <h5>Salons de discussion</h5>
-                                <p class="text-muted">Créez et rejoignez des groupes de discussion</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body text-center">
-                                <i class="fas fa-shield-alt fa-2x text-info mb-3"></i>
-                                <h5>Sécurisé</h5>
-                                <p class="text-muted">Authentification et gestion des membres</p>
-                            </div>
-                        </div>
-                    </div>
+        <i class="fas fa-comments fa-4x mb-4" style="color: var(--orange-primary);"></i>
+
+        <h1 class="display-4 home-title mb-3">Bienvenue sur MNS Chat</h1>
+
+        <p class="home-subtitle mb-5">
+            Discutez en temps réel, créez vos salons, partagez vos idées.<br>
+            Une expérience simple, fluide et élégante.
+        </p>
+
+        <!-- FEATURE CARDS -->
+        <div class="row mb-5">
+            <div class="col-md-4 mb-3">
+                <div class="home-card h-100 p-4 text-center">
+                    <i class="fas fa-bolt fa-2x mb-3"></i>
+                    <h5 >Messages instantanés</h5>
+                    <p class="text-secondary">Communication en temps réel (WebSocket)</p>
                 </div>
-                
-                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                    <a href="{% url 'chat:login' %}" class="btn btn-primary btn-lg me-md-2">
-                        <i class="fas fa-sign-in-alt"></i> Se connecter
-                    </a>
-                    <a href="{% url 'chat:register' %}" class="btn btn-outline-primary btn-lg">
-                        <i class="fas fa-user-plus"></i> S'inscrire
-                    </a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="home-card h-100 p-4 text-center">
+                    <i class="fas fa-users fa-2x mb-3"></i>
+                    <h5>Salons de discussion</h5>
+                    <p class="text-secondary">Créer et rejoindre des groupes</p>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="home-card h-100 p-4 text-center">
+                    <i class="fas fa-shield-alt fa-2x mb-3"></i>
+                    <h5>Sécurisé</h5>
+                    <p class="text-secondary">Authentification & gestion</p>
                 </div>
             </div>
         </div>
+
+        <!-- BUTTONS -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+            <a href="{% url 'login' %}" class="home-btn-main me-md-2">
+                <i class="fas fa-sign-in-alt"></i> Se connecter
+            </a>
+            <a href="{% url 'register' %}" class="home-btn-outline">
+                <i class="fas fa-user-plus"></i> S'inscrire
+            </a>
+        </div>
     </div>
 </div>
+
 {% endblock %}

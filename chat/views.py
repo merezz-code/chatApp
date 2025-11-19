@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 from .models import Room, Message, PrivateMessage, UserProfile
 from .forms import RoomForm, MessageForm, PrivateMessageForm
+from django.db.models import Q
 
 
 def register(request):
@@ -24,6 +25,9 @@ def register(request):
     else:
         form = UserCreationForm()
     return render(request, 'chat/register.html', {'form': form})
+
+def welcome(request):
+    return render(request, 'chat/welcome.html')
 
 
 def user_login(request):
@@ -52,15 +56,12 @@ def user_logout(request):
     logout(request)
     return redirect('login')
 
-
-
 @login_required
 def home(request):
-
     # Tous les salons existants
     rooms = Room.objects.all().order_by('-created_at')
     user_rooms = Room.objects.filter(
-        members = request.user
+        Q(members = request.user )
     ).distinct().order_by('-created_at')
 
     # Tous les chats privés de l'utilisateur (exemple si tu as une relation)
@@ -123,19 +124,28 @@ def create_room(request):
     if request.method == 'POST':
         name = request.POST.get('name')
         description = request.POST.get('description', '')
+        is_private = request.POST.get('is_private') == "1"  # 🔥 Nouveau champ
+
         if name:
+            # Vérification de l'unicité du nom
             if not Room.objects.filter(name__iexact=name).exists():
+
                 room = Room.objects.create(
                     name=name,
                     description=description,
-                    created_by=request.user
+                    created_by=request.user,
+                    is_private=is_private  # 🔥 Enregistrer public/privé
                 )
+
                 # Ajouter le créateur dans les membres immédiatement
                 room.members.add(request.user)
+
                 messages.success(request, f'Salon "{name}" créé avec succès!')
                 return redirect('room_detail', room_name=name)
+
             else:
                 messages.error(request, 'Un salon avec ce nom existe déjà')
+
     return render(request, 'chat/create_room.html')
 
 
@@ -234,3 +244,16 @@ def delete_message(request, message_id):
         message_obj.delete()
 
     return redirect('room_detail', room_name=message_obj.room.name)
+@login_required
+def join_room(request, room_name):
+    room = get_object_or_404(Room, name=room_name)
+
+    if room.is_private:
+        messages.error(request, "Ce salon est privé.")
+    else:
+        room.members.add(request.user)
+        messages.success(request, f"Vous avez rejoint le salon {room_name} !")
+
+
+    return redirect('room_detail', room_name=room_name)
+
