@@ -3,7 +3,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils.text import slugify
 from django.contrib.auth.models import User
-from .models import Room, Message,PrivateMessage
+from .models import Room, Message, PrivateMessage, Block  # ← Ajouter Block
 
 class ChatConsumer(AsyncWebsocketConsumer):
     """
@@ -359,6 +359,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 class PrivateChatConsumer(AsyncWebsocketConsumer):
 
+    # ========================================
+    # 🔥 VÉRIFICATION DE BLOCAGE
+    # ========================================
+    @database_sync_to_async
+    def check_block_status(self):
+        """
+        Vérifie si l'un des deux utilisateurs a bloqué l'autre
+        Retourne: (is_blocked, blocker_username)
+        """
+        try:
+            other_user = User.objects.get(username=self.other_username)
+
+            # Vérifier si self.user bloque other_user
+            if Block.objects.filter(blocker=self.user, blocked=other_user).exists():
+                return True, self.user.username
+
+            # Vérifier si other_user bloque self.user
+            if Block.objects.filter(blocker=other_user, blocked=self.user).exists():
+                return True, other_user.username
+
+            return False, None
+        except User.DoesNotExist:
+            return True, None  # Utilisateur inexistant = blocage
+
     async def connect(self):
         self.user = self.scope['user']
         self.other_username = self.scope['url_route']['kwargs']['username']
@@ -390,6 +414,18 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
         # 🔹 ENVOI MESSAGE
         # ---------------------
         if msg_type == 'message':
+            # 🔥 VÉRIFICATION DE BLOCAGE
+            is_blocked, blocker = await self.check_block_status()
+
+            if is_blocked:
+                # Message bloqué, notifier l'expéditeur
+                await self.send(text_data=json.dumps({
+                    'type': 'error',
+                    'message': 'Impossible d\'envoyer le message. Communication bloquée.',
+                    'blocked': True
+                }))
+                return  # Arrêt de l'exécution
+
             content = data.get('message', '')
             file_url = data.get('file_url')
             image_url = data.get('image_url')
@@ -427,6 +463,17 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
                     }
                 )
 
+        # ---------------------
+        # 🔹 VÉRIFIER STATUT BLOCAGE (Temps réel)
+        # ---------------------
+        elif msg_type == 'check_block':
+            is_blocked, blocker = await self.check_block_status()
+
+            await self.send(text_data=json.dumps({
+                'type': 'block_status',
+                'is_blocked': is_blocked,
+                'blocker': blocker
+            }))
     # ====================================================
     # 🔥 FONCTIONS BROADCAST
     # ====================================================

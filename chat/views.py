@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from .models import Room, Message, PrivateMessage, UserProfile
 from .forms import RoomForm, MessageForm, PrivateMessageForm
 from django.db.models import Q
-
+from .models import Block, Report
 
 def register(request):
     """Inscription d'un nouvel utilisateur"""
@@ -56,30 +56,35 @@ def user_logout(request):
     logout(request)
     return redirect('login')
 
+
 @login_required
 def home(request):
     # Tous les salons existants
     rooms = Room.objects.all().order_by('-created_at')
     user_rooms = Room.objects.filter(
-        Q(members = request.user )
+        Q(members=request.user)
     ).distinct().order_by('-created_at')
 
-    # Tous les chats privés de l'utilisateur (exemple si tu as une relation)
-    # Ici, on prend les utilisateurs avec qui il a déjà discuté
-    user_chats = User.objects.filter( id__in=[
+    # Tous les chats privés de l'utilisateur
+    user_chats = User.objects.filter(id__in=[
         *PrivateMessage.objects.filter(sender=request.user).values_list('receiver_id', flat=True),
-        *PrivateMessage.objects.filter(receiver=request.user).values_list('sender_id', flat=True) ] ).distinct().exclude(id=request.user.id)
+        *PrivateMessage.objects.filter(receiver=request.user).values_list('sender_id', flat=True)
+    ]).distinct().exclude(id=request.user.id)
 
-    # Utilisateurs disponibles pour commencer un chat (pas encore dans les chats privés)
+    # Utilisateurs disponibles pour commencer un chat
     users_not_chatted = User.objects.exclude(id=request.user.id)
 
+    # 🔥 MODIFICATION: Filtrer les conversations masquées (Signalé + Bloqué)
     private_chats = []
     for user in user_chats:
-        unread_count = request.user.profile.unread_private_count(user)
-        private_chats.append({
-            'user': user,
-            'unread_count': unread_count
-        })
+        # Ne pas inclure les conversations signalées + bloquées
+        if not request.user.profile.should_hide_conversation(user):
+            unread_count = request.user.profile.unread_private_count(user)
+            private_chats.append({
+                'user': user,
+                'unread_count': unread_count
+            })
+
     context = {
         'rooms': rooms,
         'user_rooms': user_rooms,
@@ -87,8 +92,6 @@ def home(request):
         'users_not_chatted': users_not_chatted,
     }
     return render(request, 'chat/home.html', context)
-
-
 
 @login_required
 def choose_user_chat(request):
@@ -152,7 +155,26 @@ def create_room(request):
 @login_required
 def private_chat(request, username):
     other_user = get_object_or_404(User, username=username)
-    
+
+    # 🔥 AJOUT: Vérifier le statut de blocage
+    profile = request.user.profile
+    is_blocking = profile.is_blocking(other_user)
+    is_blocked_by = profile.is_blocked_by(other_user)
+    has_reported = profile.has_reported(other_user)
+    should_hide = profile.should_hide_conversation(other_user)
+
+    # 🔥 DEBUG: Afficher les valeurs
+    print(f"DEBUG - User: {request.user.username}, Other: {username}")
+    print(f"  is_blocking: {is_blocking}")
+    print(f"  is_blocked_by: {is_blocked_by}")
+    print(f"  has_reported: {has_reported}")
+    print(f"  should_hide: {should_hide}")
+
+    # 🔥 Si signalé + bloqué = rediriger vers home (conversation masquée)
+    if should_hide:
+        messages.warning(request, f'Cette conversation avec {username} a été masquée.')
+        return redirect('home')
+
     messages_sent = PrivateMessage.objects.filter(
         sender=request.user,
         receiver=other_user
@@ -161,19 +183,27 @@ def private_chat(request, username):
         sender=other_user,
         receiver=request.user
     )
-    
+
     all_messages = sorted(
         list(messages_sent) + list(messages_received),
         key=lambda x: x.timestamp
     )
-    
+
     messages_received.filter(is_read=False).update(is_read=True)
 
-
-    return render(request, 'chat/private_chat.html', {
+    # 🔥 AJOUT: Passer les variables de blocage au template
+    context = {
         'other_user': other_user,
-        'messages': all_messages
-    })
+        'messages': all_messages,
+        'is_blocking': is_blocking,
+        'is_blocked_by': is_blocked_by,
+        'has_reported': has_reported,
+        'should_hide': should_hide
+    }
+
+    print(f"  Context: {context}")  # Debug du contexte
+
+    return render(request, 'chat/private_chat.html', context)
 
 @login_required
 @require_POST
@@ -257,3 +287,288 @@ def join_room(request, room_name):
 
     return redirect('room_detail', room_name=room_name)
 
+
+# ========================================
+# 🔥 VUES POUR BLOCAGE & SIGNALEMENT
+# ========================================
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from .models import Block, Report, UserProfile
+
+
+# ========================================
+# 📌 BLOQUER UN UTILISATEUR
+# ========================================
+
+@login_required
+@require_POST
+def block_user(request, username):
+    """
+    Bloque un utilisateur (Option 2: conversation visible, communication bloquée)
+    """
+    try:
+        user_to_block = get_object_or_404(User, username=username)
+
+        # Vérification: impossible de se bloquer soi-même
+        if user_to_block == request.user:
+            return JsonResponse({
+                'success': False,
+                'error': 'Vous ne pouvez pas vous bloquer vous-même'
+            }, status=400)
+
+        # Créer le blocage (unique_together empêche les doublons)
+        block, created = Block.objects.get_or_create(
+            blocker=request.user,
+            blocked=user_to_block
+        )
+
+        if created:
+            # 🔔 Optionnel: Notifier via WebSocket (à implémenter dans consumers.py)
+            # send_block_notification(user_to_block, request.user)
+
+            return JsonResponse({
+                'success': True,
+                'message': f'{username} a été bloqué',
+                'blocked_user': username
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': f'{username} est déjà bloqué'
+            }, status=400)
+
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Utilisateur introuvable'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ========================================
+# 📌 DÉBLOQUER UN UTILISATEUR
+# ========================================
+
+@login_required
+@require_POST
+def unblock_user(request, username):
+    """
+    Débloque un utilisateur
+    """
+    try:
+        user_to_unblock = get_object_or_404(User, username=username)
+
+        # Supprimer le blocage
+        deleted_count, _ = Block.objects.filter(
+            blocker=request.user,
+            blocked=user_to_unblock
+        ).delete()
+
+        if deleted_count > 0:
+            return JsonResponse({
+                'success': True,
+                'message': f'{username} a été débloqué',
+                'unblocked_user': username
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': f'{username} n\'était pas bloqué'
+            }, status=400)
+
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Utilisateur introuvable'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ========================================
+# 📌 SIGNALER UN UTILISATEUR
+# ========================================
+
+@login_required
+@require_POST
+def report_user(request, username):
+    """
+    Signale un utilisateur (action administrative, pas d'impact UI)
+    """
+    try:
+        user_to_report = get_object_or_404(User, username=username)
+
+        # Vérification: impossible de se signaler soi-même
+        if user_to_report == request.user:
+            return JsonResponse({
+                'success': False,
+                'error': 'Vous ne pouvez pas vous signaler vous-même'
+            }, status=400)
+
+        # Récupérer les données du formulaire
+        reason = request.POST.get('reason', 'other')
+        description = request.POST.get('description', '').strip()
+
+        # Vérifier si déjà signalé
+        existing_report = Report.objects.filter(
+            reporter=request.user,
+            reported_user=user_to_report
+        ).first()
+
+        if existing_report:
+            return JsonResponse({
+                'success': False,
+                'error': f'{username} a déjà été signalé'
+            }, status=400)
+
+        # Créer le signalement
+        report = Report.objects.create(
+            reporter=request.user,
+            reported_user=user_to_report,
+            reason=reason,
+            description=description
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{username} a été signalé aux administrateurs',
+            'report_id': report.id
+        })
+
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Utilisateur introuvable'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ========================================
+# 📌 SIGNALER + BLOQUER (MASQUER CONVERSATION)
+# ========================================
+
+@login_required
+@require_POST
+def report_and_block_user(request, username):
+    """
+    Signale ET bloque un utilisateur (Option 2: masque la conversation)
+    """
+    try:
+        user_to_report_and_block = get_object_or_404(User, username=username)
+
+        # Vérification
+        if user_to_report_and_block == request.user:
+            return JsonResponse({
+                'success': False,
+                'error': 'Action impossible'
+            }, status=400)
+
+        # 1️⃣ Créer le signalement
+        reason = request.POST.get('reason', 'other')
+        description = request.POST.get('description', '').strip()
+
+        report, report_created = Report.objects.get_or_create(
+            reporter=request.user,
+            reported_user=user_to_report_and_block,
+            defaults={
+                'reason': reason,
+                'description': description
+            }
+        )
+
+        # 2️⃣ Créer le blocage
+        block, block_created = Block.objects.get_or_create(
+            blocker=request.user,
+            blocked=user_to_report_and_block
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{username} a été signalé et bloqué. La conversation est maintenant masquée.',
+            'action': 'report_and_block',
+            'hidden': True  # Indique que la conversation doit disparaître
+        })
+
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Utilisateur introuvable'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ========================================
+# 📌 VÉRIFIER LE STATUT DE BLOCAGE (API)
+# ========================================
+
+@login_required
+def check_block_status(request, username):
+    """
+    API pour vérifier le statut de blocage avec un utilisateur
+    Retourne JSON avec toutes les informations nécessaires
+    """
+    try:
+        other_user = get_object_or_404(User, username=username)
+        profile = request.user.profile
+
+        # Récupérer les statuts
+        is_blocking = profile.is_blocking(other_user)
+        is_blocked_by = profile.is_blocked_by(other_user)
+        has_reported = profile.has_reported(other_user)
+        should_hide = profile.should_hide_conversation(other_user)
+
+        return JsonResponse({
+            'success': True,
+            'username': username,
+            'is_blocking': is_blocking,  # Je bloque cette personne
+            'is_blocked_by': is_blocked_by,  # Cette personne me bloque
+            'has_reported': has_reported,  # J'ai signalé cette personne
+            'should_hide_conversation': should_hide,  # La conversation doit être masquée
+            'can_send_messages': not (is_blocking or is_blocked_by)  # Peut envoyer des messages
+        })
+
+    except User.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Utilisateur introuvable'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# ========================================
+# 📌 LISTE DES UTILISATEURS BLOQUÉS (Optionnel)
+# ========================================
+
+@login_required
+def blocked_users_list(request):
+    """
+    Affiche la liste des utilisateurs bloqués par l'utilisateur connecté
+    """
+    blocked_list = Block.objects.filter(blocker=request.user).select_related('blocked')
+
+    return render(request, 'chat/blocked_users.html', {
+        'blocked_users': blocked_list
+    })
