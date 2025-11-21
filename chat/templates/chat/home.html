@@ -32,38 +32,34 @@
             {% if private_chats %}
                 <div class="section-divider"><i class="fas fa-user"></i> MESSAGES PRIVÉS</div>
                 {% for chat in private_chats %}
-                   <a href="{% url 'private_chat' chat.user.username %}" class="chat-item">
+                    <a href="{% url 'private_chat' chat.user.username %}" class="chat-item">
+                        <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                        <div class="chat-info">
+                            <div class="chat-name">{{ chat.user.username }}</div>
+                            <div class="chat-description">
+                                {% if chat.user.profile.is_online %}
+                                    <span class="status-online"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> En ligne</span>
+                                {% else %}
+                                    <span class="status-offline">Hors ligne</span>
+                                {% endif %}
+                            </div>
+                        </div>
 
-    <div class="chat-avatar"><i class="fas fa-user"></i></div>
-    <div class="chat-info">
-        <div class="chat-name">{{ chat.user.username }}</div>
-        <div class="chat-description">
-            {% if chat.user.profile.is_online %}
-                <span class="status-online"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> En ligne</span>
-            {% else %}
-                <span class="status-offline">Hors ligne</span>
-            {% endif %}
-        </div>
-    </div>
+                        {% if chat.unread_count > 0 %}
+                            <div class="chat-meta">
+                                <div class="chat-badge">{{ chat.unread_count }}</div>
+                            </div>
+                        {% endif %}
+                    </a>
 
-    {% if chat.unread_count > 0 %}
-        <div class="chat-meta">
-            <div class="chat-badge">{{ chat.unread_count }}</div>
-        </div>
-    {% endif %}
-
-
-
-</a>
-                        <div class="chat-meta">
-      <span class="menu-icon">&#8942;</span>
-      <div class="dropdown-menu">
-        <a href="#">Ouvrir</a>
-        <a href="#">Supprimer</a>
-        <a href="#">Archiver</a>
-      </div>
-    </div>
-
+                    <div class="chat-meta">
+                        <span class="menu-icon">&#8942;</span>
+                        <div class="dropdown-menu">
+                            <a href="{% url 'private_chat' chat.user.username %}">Ouvrir</a>
+                            <a href="#">Supprimer</a>
+                            <a href="#">Archiver</a>
+                        </div>
+                    </div>
                 {% endfor %}
             {% endif %}
         </div>
@@ -154,7 +150,52 @@
     </div>
   </div>
 </div>
+
+<!-- 🔥 STYLES POUR LES BADGES DE BLOCAGE -->
+<style>
+/* Badge "Bloqué" dans la sidebar */
+.badge-blocked-sidebar {
+    background-color: #dc3545;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-left: 5px;
+    display: inline-block;
+    animation: pulse-blocked 2s infinite;
+}
+
+/* Badge "Vous bloque" */
+.badge-blocked-by-sidebar {
+    background-color: #6c757d;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-left: 5px;
+    display: inline-block;
+}
+
+/* Animation de pulsation pour le badge bloqué */
+@keyframes pulse-blocked {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Style pour les conversations bloquées */
+.blocked-chat-item {
+    opacity: 0.7;
+    background-color: #f8f9fa !important;
+}
+
+.blocked-chat-item:hover {
+    opacity: 0.85;
+    background-color: #e9ecef !important;
+}
+</style>
+
 {% endblock %}
+
 {% block extra_js %}
 <script>
   // Sélectionner tous les containers de menu

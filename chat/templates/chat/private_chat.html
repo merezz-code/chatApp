@@ -15,7 +15,17 @@
             <i class="fas fa-user"></i>
         </div>
         <div class="chat-header-info">
-            <div class="chat-header-title">{{ other_user.username }}</div>
+            <div class="chat-header-title">
+                {{ other_user.username }}
+                <!-- 🔥 Badge Bloqué -->
+                {% if is_blocking %}
+                    <span class="badge bg-danger ms-2" id="blocked-badge">🚫 Bloqué</span>
+                {% endif %}
+                <!-- 🔥 Badge "Vous bloque" -->
+                {% if is_blocked_by %}
+                    <span class="badge bg-secondary ms-2">⚠️ Vous bloque</span>
+                {% endif %}
+            </div>
             <div class="chat-header-subtitle">
                 {% if other_user.profile.is_online %}
                     <i class="fas fa-circle" style="font-size: 0.6rem; color: #25D366;"></i> En ligne
@@ -24,17 +34,30 @@
                 {% endif %}
             </div>
         </div>
+        <!-- Menu trois points -->
         <div class="chat-header-menu">
             <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
             <div class="menu-dropdown" id="menuDropdown">
-                {% if room.is_group %}
-                    <div class="menu-item" onclick="leaveGroup({{ room.id }})">Quitter le groupe</div>
+                <!-- 🔥 Options de blocage -->
+                {% if is_blocking %}
+                    <div class="menu-item" onclick="unblockUser()">
+                        <i class="fas fa-unlock"></i> Débloquer
+                    </div>
                 {% else %}
-                    <div class="menu-item" onclick="blockUser({{ other_user.id }})">Bloquer</div>
+                    <div class="menu-item" onclick="blockUser()">
+                        <i class="fas fa-ban"></i> Bloquer
+                    </div>
+                    <div class="menu-item text-danger" onclick="reportAndBlockUser()">
+                        <i class="fas fa-user-slash"></i> Signaler et Bloquer
+                    </div>
                 {% endif %}
-                <div class="menu-item" onclick="reportChat({{ room.id }})">Signaler</div>
             </div>
         </div>
+    </div>
+
+    <!-- 🔥 Alerte de blocage -->
+    <div id="block-alert" class="alert alert-warning m-3" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i> <span id="block-alert-text"></span>
     </div>
 
     <!-- MESSAGES -->
@@ -42,6 +65,18 @@
         {% if messages %}
             {% for message in messages %}
                 <div class="message-wrapper {% if message.sender == user %}sent{% else %}received{% endif %}" id="msg-{{ message.id }}">
+
+                    {% if message.sender == user %}
+                        <!-- Bouton de suppression -->
+                        <a href="#"
+                           class="icon-link icon-link-hover text-danger text-decoration-none delete-btn"
+                           data-id="{{ message.id }}"
+                           data-bs-toggle="modal"
+                           data-bs-target="#deleteModal">
+                             <i class="fas fa-trash"></i>
+                        </a>
+                    {% endif %}
+
                     <div class="message-bubble {% if message.sender == user %}sent{% else %}received{% endif %}">
                         <div class="message-text">{{ message.content }}</div>
 
@@ -55,6 +90,7 @@
                                 </a>
                             </div>
                         {% endif %}
+
                         <div class="message-time">{{ message.timestamp|date:"d/m H:i" }}</div>
                         {% if message.sender == request.user and message.is_read %}
                             <small class="text-light">Vu</small>
@@ -62,13 +98,13 @@
                     </div>
 
                     {% if message.sender == user %}
-                    <a href="#"
-                       class="icon-link icon-link-hover text-danger text-decoration-none delete-btn delete"
-                       data-id="{{ message.id }}"
-                       data-bs-toggle="modal"
-                       data-bs-target="#deleteModal">
-                        <i class="fas fa-trash"></i>
-                    </a>
+                        <a href="#"
+                           class="icon-link icon-link-hover text-danger text-decoration-none delete-btn delete"
+                           data-id="{{ message.id }}"
+                           data-bs-toggle="modal"
+                           data-bs-target="#deleteModal">
+                            <i class="fas fa-trash"></i>
+                        </a>
                     {% endif %}
                 </div>
             {% endfor %}
@@ -137,6 +173,10 @@ const filePreview = document.getElementById('file-preview');
 
 let selectedFile = null;
 const username = "{{ user.username }}";
+const otherUsername = "{{ other_user.username }}";
+
+// 🔥 VARIABLE GLOBALE: Statut de blocage
+let isBlocked = {{ is_blocking|yesno:"true,false" }} || {{ is_blocked_by|yesno:"true,false" }};
 
 // --- WEBSOCKET ---
 const chatSocket = new WebSocket(
@@ -205,14 +245,37 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', ()=>{
     bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
 });
 
+// 🔥 FONCTION: Vérifier le statut de blocage
+function checkBlockStatus() {
+    if (isBlocked) {
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+        messageInput.placeholder = '🚫 Impossible d\'envoyer des messages';
+
+        const alertBox = document.getElementById('block-alert');
+        const alertText = document.getElementById('block-alert-text');
+        alertText.textContent = 'Communication bloquée avec cet utilisateur.';
+        alertBox.style.display = 'block';
+    }
+}
+
+// Vérifier au chargement de la page
+checkBlockStatus();
+
 // --- ENVOI MESSAGE ---
 function sendMessage(){
+    // 🔥 Vérifier si bloqué avant d'envoyer
+    if (isBlocked) {
+        alert('Impossible d\'envoyer des messages. Communication bloquée.');
+        return;
+    }
+
     const text = messageInput.value.trim();
 
     if(selectedFile){
         const formData = new FormData();
         formData.append('file', selectedFile);
-        formData.append('receiver_username', "{{ other_user.username }}");
+        formData.append('receiver_username', otherUsername);
         if(text) formData.append('content', text);
 
         fetch("{% url 'upload_file' %}",{
@@ -278,7 +341,129 @@ chatSocket.onmessage = function(e){
         const msg = document.getElementById("msg-"+data.message_id);
         if(msg) msg.remove();
     }
+    // 🔥 Gérer les erreurs de blocage
+    if(data.type==='error' && data.blocked){
+        alert(data.message);
+        isBlocked = true;
+        checkBlockStatus();
+    }
 };
+
+// 🔥 FONCTION: Récupérer le token CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 🔥 FONCTION: Bloquer un utilisateur
+function blockUser() {
+    if (!confirm(`Voulez-vous vraiment bloquer ${otherUsername}?`)) {
+        return;
+    }
+
+    fetch(`/block/${otherUsername}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload(); // Recharger pour afficher le badge
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue');
+    });
+}
+
+// 🔥 FONCTION: Débloquer un utilisateur
+function unblockUser() {
+    if (!confirm(`Voulez-vous vraiment débloquer ${otherUsername}?`)) {
+        return;
+    }
+
+    fetch(`/unblock/${otherUsername}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue');
+    });
+}
+
+// 🔥 FONCTION: Signaler + Bloquer (masquer conversation)
+function reportAndBlockUser() {
+    const reason = prompt('Raison du signalement:\n\n1. Spam\n2. Harcèlement\n3. Contenu inapproprié\n4. Faux profil\n5. Autre\n\nEntrez le numéro (1-5):');
+
+    if (!reason) return;
+
+    const reasonMap = {
+        '1': 'spam',
+        '2': 'harassment',
+        '3': 'inappropriate',
+        '4': 'fake',
+        '5': 'other'
+    };
+
+    const selectedReason = reasonMap[reason] || 'other';
+    const description = prompt('Description (optionnel):') || '';
+
+    const formData = new FormData();
+    formData.append('reason', selectedReason);
+    formData.append('description', description);
+
+    fetch(`/report-and-block/${otherUsername}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // Rediriger vers la page d'accueil car la conversation est masquée
+            window.location.href = '/home';
+        } else {
+            alert('Erreur: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur est survenue');
+    });
+}
 
 // --- MENU TOGGLE ---
 const menuToggle=document.getElementById('menuToggle');
