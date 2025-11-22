@@ -62,6 +62,8 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     bio = models.TextField(blank=True, max_length=500)
+    email = models.EmailField(blank=True, max_length=500)
+    phone = models.CharField(blank=True, max_length=100)
     is_online = models.BooleanField(default=False)
     last_seen = models.DateTimeField(default=timezone.now)
     
@@ -102,9 +104,6 @@ class UserProfile(models.Model):
         """
         return self.is_blocking(other_user) and self.has_reported(other_user)
 
-    # ========================================
-    # 🔥 NOUVELLES MÉTHODES - BLOCAGE
-    # ========================================
 
     def is_blocking(self, other_user):
         """Vérifie si self.user bloque other_user"""
@@ -124,10 +123,6 @@ class UserProfile(models.Model):
         """
         return self.is_blocking(other_user) and self.has_reported(other_user)
 
-
-# ========================================
-# 🔥 NOUVEAUX MODÈLES - BLOCAGE & SIGNALEMENT
-# ========================================
 
 class Block(models.Model):
     """

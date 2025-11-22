@@ -703,3 +703,9 @@
     visibility: visible;
     opacity: 1;
 }
+
+.rounded-circle{
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+}

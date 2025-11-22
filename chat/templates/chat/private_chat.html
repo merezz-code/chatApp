@@ -11,17 +11,23 @@
         <a href="{% url 'home' %}" class="btn-back">
             <i class="fas fa-arrow-left fa-lg"></i>
         </a>
-        <div class="chat-header-avatar">
-            <i class="fas fa-user"></i>
+
+        <div class="chat-header-avatar" data-bs-toggle="modal" data-bs-target="#ProfileModaluser">
+            {% if other_user.profile.avatar %}
+                <img src="{{ other_user.profile.avatar.url }}" alt="{{ other_user.username }} Avatar" class="rounded-circle">
+            {% else %}
+                <i class="fas fa-user fa-lg"></i>
+            {% endif %}
         </div>
+
         <div class="chat-header-info">
             <div class="chat-header-title">
                 {{ other_user.username }}
-                <!-- 🔥 Badge Bloqué -->
+                <!-- Badge Bloqué -->
                 {% if is_blocking %}
                     <span class="badge bg-danger ms-2" id="blocked-badge">🚫 Bloqué</span>
                 {% endif %}
-                <!-- 🔥 Badge "Vous bloque" -->
+                <!-- Badge "Vous bloque" -->
                 {% if is_blocked_by %}
                     <span class="badge bg-secondary ms-2">⚠️ Vous bloque</span>
                 {% endif %}
@@ -38,7 +44,7 @@
         <div class="chat-header-menu">
             <i class="fas fa-ellipsis-v" id="menuToggle" style="cursor:pointer;"></i>
             <div class="menu-dropdown" id="menuDropdown">
-                <!-- 🔥 Options de blocage -->
+                <!--  Options de blocage -->
                 {% if is_blocking %}
                     <div class="menu-item" onclick="unblockUser()">
                         <i class="fas fa-unlock"></i> Débloquer
@@ -55,7 +61,7 @@
         </div>
     </div>
 
-    <!-- 🔥 Alerte de blocage -->
+    <!--  Alerte de blocage -->
     <div id="block-alert" class="alert alert-warning m-3" style="display: none;">
         <i class="fas fa-exclamation-triangle"></i> <span id="block-alert-text"></span>
     </div>
@@ -159,6 +165,105 @@
     </div>
 
 </div>
+
+<div class="modal fade" id="ProfileModaluser" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-profile">
+        <div class="modal-header profile-header">
+          <h5 class="modal-title text-white">Information sur le profile </h5>
+          <button type="button" class="btn-close-profile" data-bs-dismiss="modal" aria-label="Fermer">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="modal-body profile-body">
+          <div class="profile-avatar-section text-center mb-4">
+            <div class="position-relative d-inline-block">
+                <div class="profile-avatar-large">
+                  {% if other_user.profile.avatar %}
+                    <img src="{{ other_user.profile.avatar.url }}" alt="Avatar">
+                  {% else %}
+                    <div>
+                        <i class="fas fa-user fa-3x text-secondary"></i>
+                    </div>
+                  {% endif %}
+                </div>
+            </div>
+          </div>
+
+          <div class="profile-section mb-3">
+            <div class="profile-section-header">
+              <span class="profile-label">Nom d'utilisateur</span>
+            </div>
+            <div class="profile-section-content">
+              <p type="text" class="form-control-plaintext">
+                {{ other_user.username }}
+              </p>
+            </div>
+          </div>
+
+          <div class="profile-section mb-3">
+            <div class="profile-section-header">
+              <span class="profile-label">À propos (Bio)</span>
+            </div>
+            <div class="profile-section-content">
+                {% with other_user.username|add:" n'a pas encore rempli sa biographie." as default_bio_message %}
+                    <p type="text" class="form-control-plaintext">
+                        {{ other_user.profile.bio|default:default_bio_message }}
+                    </p>
+                {% endwith %}
+            </div>
+
+          </div>
+
+          <div class="profile-section">
+            <div class="profile-section-header">
+              <span class="profile-label">Téléphone</span>
+            </div>
+            <div class="profile-section-content">
+               {% with other_user.username|add:" n'a pas encore rempli son numéro de telephone." as default_phone_message %}
+                    <p type="text" class="form-control-plaintext">
+                        {{ other_user.profile.phone|default:default_phone_message}}
+                    </p>
+               {% endwith %}
+            </div>
+          </div>
+
+            <div class="profile-section">
+                <div class="profile-section-header">
+                  <span class="profile-label">Email</span>
+                </div>
+                <div class="profile-section-content">
+                    {% with other_user.username|add:" n'a pas encore rempli son adresse mail." as default_email_message %}
+                        <p type="text" class="form-control-plaintext" >
+                            {{ other_user.profile.email|default:default_email_message}}
+                        </p>
+                    {% endwith %}
+                </div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <span class="profile-label">Dernière activité</span>
+                </div>
+                <div class="profile-section-content">
+                    <p class="form-control-plaintext">
+                        {% if other_user.profile.is_online %}
+                            <span class="text-success"><i class="fas fa-circle"></i> En ligne</span>
+                        {% else %}
+                            Vu pour la dernière fois : {{ other_user.profile.last_seen|date:"d/m/Y H:i" }}
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer border-0">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -175,7 +280,7 @@ let selectedFile = null;
 const username = "{{ user.username }}";
 const otherUsername = "{{ other_user.username }}";
 
-// 🔥 VARIABLE GLOBALE: Statut de blocage
+//  VARIABLE GLOBALE: Statut de blocage
 let isBlocked = {{ is_blocking|yesno:"true,false" }} || {{ is_blocked_by|yesno:"true,false" }};
 
 // --- WEBSOCKET ---
@@ -245,7 +350,7 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', ()=>{
     bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
 });
 
-// 🔥 FONCTION: Vérifier le statut de blocage
+//  FONCTION: Vérifier le statut de blocage
 function checkBlockStatus() {
     if (isBlocked) {
         messageInput.disabled = true;
@@ -264,7 +369,7 @@ checkBlockStatus();
 
 // --- ENVOI MESSAGE ---
 function sendMessage(){
-    // 🔥 Vérifier si bloqué avant d'envoyer
+    //  Vérifier si bloqué avant d'envoyer
     if (isBlocked) {
         alert('Impossible d\'envoyer des messages. Communication bloquée.');
         return;
@@ -341,7 +446,7 @@ chatSocket.onmessage = function(e){
         const msg = document.getElementById("msg-"+data.message_id);
         if(msg) msg.remove();
     }
-    // 🔥 Gérer les erreurs de blocage
+    //  Gérer les erreurs de blocage
     if(data.type==='error' && data.blocked){
         alert(data.message);
         isBlocked = true;
@@ -349,7 +454,7 @@ chatSocket.onmessage = function(e){
     }
 };
 
-// 🔥 FONCTION: Récupérer le token CSRF
+//  FONCTION: Récupérer le token CSRF
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -365,7 +470,7 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// 🔥 FONCTION: Bloquer un utilisateur
+//  FONCTION: Bloquer un utilisateur
 function blockUser() {
     if (!confirm(`Voulez-vous vraiment bloquer ${otherUsername}?`)) {
         return;
@@ -393,7 +498,7 @@ function blockUser() {
     });
 }
 
-// 🔥 FONCTION: Débloquer un utilisateur
+//  FONCTION: Débloquer un utilisateur
 function unblockUser() {
     if (!confirm(`Voulez-vous vraiment débloquer ${otherUsername}?`)) {
         return;
@@ -421,7 +526,7 @@ function unblockUser() {
     });
 }
 
-// 🔥 FONCTION: Signaler + Bloquer (masquer conversation)
+//  FONCTION: Signaler + Bloquer (masquer conversation)
 function reportAndBlockUser() {
     const reason = prompt('Raison du signalement:\n\n1. Spam\n2. Harcèlement\n3. Contenu inapproprié\n4. Faux profil\n5. Autre\n\nEntrez le numéro (1-5):');
 

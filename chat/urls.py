@@ -25,4 +25,6 @@ path('', views.welcome, name='welcome'),
     path('report-and-block/<str:username>/', views.report_and_block_user, name='report_and_block_user'),
     # Vérifier le statut de blocage (API)
     path('check-block-status/<str:username>/', views.check_block_status, name='check_block_status'),
+    path('profile/update/', views.update_profile, name='update_profile'),
+
 ]
