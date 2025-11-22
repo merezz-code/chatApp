@@ -257,18 +257,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_members_list_data(self):
         """
-        Récupère la liste des membres actuels et le compte.
+        Récupère la liste des membres actuels, le compte, et l'URL de l'avatar.
         """
         if not self.room:
             return {'count': 0, 'members': []}
 
-        # .all() est paresseux, il faut l'évaluer dans un contexte sync
-        # En le passant dans list(), on force l'évaluation
-        members = list(self.room.members.all())
+        # Charger tous les membres et précharger leurs profils (select_related)
+        members = self.room.members.all().select_related('profile')
+
+        members_data_list = []
+        for member in members:
+            avatar_url = None
+
+            if hasattr(member, 'profile'):
+                if member.profile.avatar:
+                    avatar_url = member.profile.avatar.url
+
+            members_data_list.append({
+                'username': member.username,
+                'avatar_url': avatar_url
+            })
 
         return {
-            'count': len(members),
-            'members': [{'username': member.username} for member in members]
+            'count': len(members_data_list),
+            'members': members_data_list
         }
 
     @database_sync_to_async
@@ -359,9 +371,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 class PrivateChatConsumer(AsyncWebsocketConsumer):
 
-    # ========================================
-    # 🔥 VÉRIFICATION DE BLOCAGE
-    # ========================================
+    # VÉRIFICATION DE BLOCAGE
     @database_sync_to_async
     def check_block_status(self):
         """
@@ -410,11 +420,8 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         msg_type = data.get('type', 'message')
 
-        # ---------------------
-        # 🔹 ENVOI MESSAGE
-        # ---------------------
+
         if msg_type == 'message':
-            # 🔥 VÉRIFICATION DE BLOCAGE
             is_blocked, blocker = await self.check_block_status()
 
             if is_blocked:
@@ -447,9 +454,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
                     }
                 )
 
-        # ---------------------
-        # 🔹 SUPPRESSION MESSAGE
-        # ---------------------
+        # SUPPRESSION MESSAGE
         elif msg_type == 'delete_message':
             msg_id = data.get('message_id')
             deleted = await self.delete_message(msg_id)
@@ -463,9 +468,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
                     }
                 )
 
-        # ---------------------
-        # 🔹 VÉRIFIER STATUT BLOCAGE (Temps réel)
-        # ---------------------
+        # VÉRIFIER STATUT BLOCAGE
         elif msg_type == 'check_block':
             is_blocked, blocker = await self.check_block_status()
 
@@ -474,9 +477,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
                 'is_blocked': is_blocked,
                 'blocker': blocker
             }))
-    # ====================================================
-    # 🔥 FONCTIONS BROADCAST
-    # ====================================================
+
 
     async def private_message(self, event):
         """
@@ -484,7 +485,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
         Ici on renvoie exactement ce que ton JS attend.
         """
         await self.send(text_data=json.dumps({
-            'type': 'message',  # obligatoire pour ton JS
+            'type': 'message',
             'id': event['id'],
             'sender': event['sender'],
             'message': event['message'],
@@ -503,9 +504,6 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
             'message_id': event['message_id']
         }))
 
-    # ====================================================
-    # 🔥 BASE DE DONNÉES
-    # ====================================================
 
     @database_sync_to_async
     def save_message(self, content):

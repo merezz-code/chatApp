@@ -33,7 +33,15 @@
                 <div class="section-divider"><i class="fas fa-user"></i> MESSAGES PRIVÉS</div>
                 {% for chat in private_chats %}
                     <a href="{% url 'private_chat' chat.user.username %}" class="chat-item">
-                        <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                        <div class="chat-avatar">
+                             {% if chat.user.profile.avatar %}
+                                <img src="{{ chat.user.profile.avatar.url }}" alt="Avatar">
+                            {% else %}
+                                <div>
+                                    <i class="fas fa-user"></i>
+                                </div>
+                            {% endif %}
+                        </div>
                         <div class="chat-info">
                             <div class="chat-name">{{ chat.user.username }}</div>
                             <div class="chat-description">
@@ -133,7 +141,15 @@
                 <div class="section-divider"><i class="fas fa-user"></i> Utilisateurs</div>
                 {% for user in users_not_chatted %}
                     <a href="{% url 'private_chat' user.username %}">
-                        <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                        <div class="chat-avatar">
+                        {% if user.profile.avatar %}
+                            <img src="{{ user.profile.avatar.url }}" alt="Avatar">
+                        {% else %}
+                            <div>
+                                <i class="fas fa-user"></i>
+                            </div>
+                        {% endif %}
+                        </div>
                         <div class="chat-info">
                             <div class="chat-name">{{ user.username }}</div>
                         </div>
@@ -150,49 +166,6 @@
     </div>
   </div>
 </div>
-
-<!-- 🔥 STYLES POUR LES BADGES DE BLOCAGE -->
-<style>
-/* Badge "Bloqué" dans la sidebar */
-.badge-blocked-sidebar {
-    background-color: #dc3545;
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 8px;
-    margin-left: 5px;
-    display: inline-block;
-    animation: pulse-blocked 2s infinite;
-}
-
-/* Badge "Vous bloque" */
-.badge-blocked-by-sidebar {
-    background-color: #6c757d;
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 8px;
-    margin-left: 5px;
-    display: inline-block;
-}
-
-/* Animation de pulsation pour le badge bloqué */
-@keyframes pulse-blocked {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-}
-
-/* Style pour les conversations bloquées */
-.blocked-chat-item {
-    opacity: 0.7;
-    background-color: #f8f9fa !important;
-}
-
-.blocked-chat-item:hover {
-    opacity: 0.85;
-    background-color: #e9ecef !important;
-}
-</style>
 
 {% endblock %}
 

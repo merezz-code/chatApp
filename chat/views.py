@@ -5,12 +5,10 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST, require_http_methods
-from .models import Room, Message, PrivateMessage, UserProfile
-from .forms import RoomForm, MessageForm, PrivateMessageForm
+from django.views.decorators.http import require_POST
+from .models import Room, Message, PrivateMessage, UserProfile, Block, Report
+from .forms import UserProfileForm
 from django.db.models import Q
-from .models import Block, Report
 
 def register(request):
     """Inscription d'un nouvel utilisateur"""
@@ -74,7 +72,7 @@ def home(request):
     # Utilisateurs disponibles pour commencer un chat
     users_not_chatted = User.objects.exclude(id=request.user.id)
 
-    # 🔥 MODIFICATION: Filtrer les conversations masquées (Signalé + Bloqué)
+    # MODIFICATION: Filtrer les conversations masquées (Signalé + Bloqué)
     private_chats = []
     for user in user_chats:
         # Ne pas inclure les conversations signalées + bloquées
@@ -127,7 +125,7 @@ def create_room(request):
     if request.method == 'POST':
         name = request.POST.get('name')
         description = request.POST.get('description', '')
-        is_private = request.POST.get('is_private') == "1"  # 🔥 Nouveau champ
+        is_private = request.POST.get('is_private') == "1"
 
         if name:
             # Vérification de l'unicité du nom
@@ -137,7 +135,7 @@ def create_room(request):
                     name=name,
                     description=description,
                     created_by=request.user,
-                    is_private=is_private  # 🔥 Enregistrer public/privé
+                    is_private=is_private
                 )
 
                 # Ajouter le créateur dans les membres immédiatement
@@ -155,22 +153,12 @@ def create_room(request):
 @login_required
 def private_chat(request, username):
     other_user = get_object_or_404(User, username=username)
-
-    # 🔥 AJOUT: Vérifier le statut de blocage
     profile = request.user.profile
     is_blocking = profile.is_blocking(other_user)
     is_blocked_by = profile.is_blocked_by(other_user)
     has_reported = profile.has_reported(other_user)
     should_hide = profile.should_hide_conversation(other_user)
 
-    # 🔥 DEBUG: Afficher les valeurs
-    print(f"DEBUG - User: {request.user.username}, Other: {username}")
-    print(f"  is_blocking: {is_blocking}")
-    print(f"  is_blocked_by: {is_blocked_by}")
-    print(f"  has_reported: {has_reported}")
-    print(f"  should_hide: {should_hide}")
-
-    # 🔥 Si signalé + bloqué = rediriger vers home (conversation masquée)
     if should_hide:
         messages.warning(request, f'Cette conversation avec {username} a été masquée.')
         return redirect('home')
@@ -191,7 +179,6 @@ def private_chat(request, username):
 
     messages_received.filter(is_read=False).update(is_read=True)
 
-    # 🔥 AJOUT: Passer les variables de blocage au template
     context = {
         'other_user': other_user,
         'messages': all_messages,
@@ -229,7 +216,7 @@ def upload_file(request):
                              'file_url': message.file.url if message.file else '',
                              'image_url': message.image.url if message.image else ''})
 
-    # === Si c'est un chat privé ===
+    # Si c'est un chat privé
     receiver_username = request.POST.get('receiver_username')
     if receiver_username:
         try:
@@ -284,31 +271,14 @@ def join_room(request, room_name):
         room.members.add(request.user)
         messages.success(request, f"Vous avez rejoint le salon {room_name} !")
 
-
     return redirect('room_detail', room_name=room_name)
 
-
-# ========================================
-# 🔥 VUES POUR BLOCAGE & SIGNALEMENT
-# ========================================
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib import messages
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from .models import Block, Report, UserProfile
-
-
-# ========================================
-# 📌 BLOQUER UN UTILISATEUR
-# ========================================
 
 @login_required
 @require_POST
 def block_user(request, username):
     """
-    Bloque un utilisateur (Option 2: conversation visible, communication bloquée)
+    Bloque un utilisateur
     """
     try:
         user_to_block = get_object_or_404(User, username=username)
@@ -320,16 +290,12 @@ def block_user(request, username):
                 'error': 'Vous ne pouvez pas vous bloquer vous-même'
             }, status=400)
 
-        # Créer le blocage (unique_together empêche les doublons)
         block, created = Block.objects.get_or_create(
             blocker=request.user,
             blocked=user_to_block
         )
 
         if created:
-            # 🔔 Optionnel: Notifier via WebSocket (à implémenter dans consumers.py)
-            # send_block_notification(user_to_block, request.user)
-
             return JsonResponse({
                 'success': True,
                 'message': f'{username} a été bloqué',
@@ -352,10 +318,6 @@ def block_user(request, username):
             'error': str(e)
         }, status=500)
 
-
-# ========================================
-# 📌 DÉBLOQUER UN UTILISATEUR
-# ========================================
 
 @login_required
 @require_POST
@@ -396,15 +358,11 @@ def unblock_user(request, username):
         }, status=500)
 
 
-# ========================================
-# 📌 SIGNALER UN UTILISATEUR
-# ========================================
-
 @login_required
 @require_POST
 def report_user(request, username):
     """
-    Signale un utilisateur (action administrative, pas d'impact UI)
+    Signale un utilisateur
     """
     try:
         user_to_report = get_object_or_404(User, username=username)
@@ -457,28 +415,21 @@ def report_user(request, username):
             'error': str(e)
         }, status=500)
 
-
-# ========================================
-# 📌 SIGNALER + BLOQUER (MASQUER CONVERSATION)
-# ========================================
-
 @login_required
 @require_POST
 def report_and_block_user(request, username):
     """
-    Signale ET bloque un utilisateur (Option 2: masque la conversation)
+    Signale ET bloque un utilisateur
     """
     try:
         user_to_report_and_block = get_object_or_404(User, username=username)
 
-        # Vérification
         if user_to_report_and_block == request.user:
             return JsonResponse({
                 'success': False,
                 'error': 'Action impossible'
             }, status=400)
 
-        # 1️⃣ Créer le signalement
         reason = request.POST.get('reason', 'other')
         description = request.POST.get('description', '').strip()
 
@@ -491,7 +442,6 @@ def report_and_block_user(request, username):
             }
         )
 
-        # 2️⃣ Créer le blocage
         block, block_created = Block.objects.get_or_create(
             blocker=request.user,
             blocked=user_to_report_and_block
@@ -516,10 +466,7 @@ def report_and_block_user(request, username):
         }, status=500)
 
 
-# ========================================
-# 📌 VÉRIFIER LE STATUT DE BLOCAGE (API)
-# ========================================
-
+# VÉRIFIER LE STATUT DE BLOCAGE (API)
 @login_required
 def check_block_status(request, username):
     """
@@ -539,11 +486,11 @@ def check_block_status(request, username):
         return JsonResponse({
             'success': True,
             'username': username,
-            'is_blocking': is_blocking,  # Je bloque cette personne
-            'is_blocked_by': is_blocked_by,  # Cette personne me bloque
-            'has_reported': has_reported,  # J'ai signalé cette personne
-            'should_hide_conversation': should_hide,  # La conversation doit être masquée
-            'can_send_messages': not (is_blocking or is_blocked_by)  # Peut envoyer des messages
+            'is_blocking': is_blocking,
+            'is_blocked_by': is_blocked_by,
+            'has_reported': has_reported,
+            'should_hide_conversation': should_hide,
+            'can_send_messages': not (is_blocking or is_blocked_by)
         })
 
     except User.DoesNotExist:
@@ -557,18 +504,15 @@ def check_block_status(request, username):
             'error': str(e)
         }, status=500)
 
-
-# ========================================
-# 📌 LISTE DES UTILISATEURS BLOQUÉS (Optionnel)
-# ========================================
-
 @login_required
-def blocked_users_list(request):
-    """
-    Affiche la liste des utilisateurs bloqués par l'utilisateur connecté
-    """
-    blocked_list = Block.objects.filter(blocker=request.user).select_related('blocked')
+def update_profile(request):
+    profile = request.user.profile
 
-    return render(request, 'chat/blocked_users.html', {
-        'blocked_users': blocked_list
-    })
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect('/home')
+    else:
+        form = UserProfileForm(instance=profile)
+    return render(request, 'base.html', {'form': form, 'user': request.user})

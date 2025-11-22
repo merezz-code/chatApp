@@ -128,7 +128,15 @@
                     <div class="section-divider"><i class="fas fa-user"></i> Utilisateurs</div>
                     {% for user in membre_contact %}
                         <div class="user-list-item">
-                            <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                            <div class="chat-avatar">
+                                {% if user.profile.avatar %}
+                                    <img src="{{ user.profile.avatar.url }}" alt="Avatar">
+                                {% else %}
+                                    <div>
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
                             <div class="chat-info">
                                 <div class="chat-name">{{ user.username }}</div>
                             </div>
@@ -154,14 +162,31 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-sidebar">
              <div class="modal-chat-list mt-2" id="member-list-container">
-                 <div class="section-divider"><i class="fas fa-user"></i> Les membres du group </div>
+                 <div class="section-divider"><i class="fas fa-user"></i> Les membres du group</div>
                  <div id="member-list-items">
                      {% if members_list %}
                        {% for member in members_list %}
                              <div class="user-list-item">
-                                 <div class="chat-avatar"><i class="fas fa-user"></i></div>
+                                 <div class="chat-avatar">
+                                  {% if member.profile %}
+                                      <p>hahaha</p>
+                                        {% comment %} Le profil existe, vérifions l'avatar à l'intérieur {% endcomment %}
+                                        {% if member.profile.avatar %}
+                                            <img src="{{ member.profile.avatar.url }}" alt="Avatar">
+                                        {% else %}
+                                            <div>
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                        {% endif %}
+                                  {% else %}
+                                        {% comment %} Le profil n'existe pas du tout {% endcomment %}
+                                        <div>
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                  {% endif %}
+                                 </div>
                                  <div class="chat-info">
-                                     <div class="chat-name">{{ member.username }}</div>
+                                     <div class="chat-name">{{ member.username }} jaja</div>
                                  </div>
                                  {% if user == room.created_by and member != room.created_by %}
                                      <button onclick="removeMember('{{ member.username }}')"
@@ -417,11 +442,19 @@ function rebuildMemberList(members) {
 
     members.forEach(member => {
         const itemDiv = document.createElement('div');
+        let avatarHtml;
         itemDiv.className = 'user-list-item';
         itemDiv.id = `member-item-${member.username}`;
 
+        if (member.avatar_url) {
+            // Si l'URL est fournie par le WebSocket
+            avatarHtml = `<img src="${member.avatar_url}" alt="${escapeHtml(member.username)} Avatar">`;
+        } else {
+            avatarHtml = `<div><i class="fas fa-user"></i></div>`;
+        }
+
         let itemHtml = `
-            <div class="chat-avatar"><i class="fas fa-user"></i></div>
+            <div class="chat-avatar">${avatarHtml}</div>
             <div class="chat-info">
                 <div class="chat-name">${escapeHtml(member.username)}</div>
             </div>

@@ -100,3 +100,76 @@
             background-color: rgba(224, 102, 102, 0.15);
             color: #D64545;
         }
+
+/* Avatar overlay pour l'upload */
+.profile-avatar-large {
+  position: relative;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(162, 123, 92, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 50%;
+  color: white;
+}
+
+.profile-avatar-large:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay i {
+  font-size: 2rem;
+}
+
+.avatar-overlay span {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Styles pour les inputs éditables */
+.profile-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #2c2c2c;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.25rem;
+  outline: none;
+}
+
+.profile-input:disabled {
+  cursor: default;
+}
+
+.profile-input:not(:disabled) {
+  background: rgba(162, 123, 92, 0.1);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.profile-textarea {
+  min-height: 60px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.profile-inline-form {
+  width: 100%;
+}
+
+.btn-edit.save-mode {
+  background: var(--orange-primary);
+  color: white;
+}
