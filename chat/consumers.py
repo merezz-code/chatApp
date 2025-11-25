@@ -3,7 +3,10 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils.text import slugify
 from django.contrib.auth.models import User
-from .models import Room, Message, PrivateMessage, Block  # ← Ajouter Block
+from .models import Room, Message, PrivateMessage, Block, MessageRead, HiddenConversation
+from django.utils import timezone
+
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     """
@@ -84,6 +87,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'username': self.user.username,
                         'message': msg_obj.content,
                         'timestamp': msg_obj.timestamp.strftime("%H:%M")
+                    }
+                )
+                unread_counts = await self.get_unread_counts_for_room()
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'unread_update',
+                        'unread_counts': unread_counts
                     }
                 )
 
@@ -216,8 +227,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'message_id': message_id
                 }
             )
+        elif action == 'hide_conversation':
+            # Créer ou mettre à jour le record HiddenConversation
+            await self.hide_conversation_for_user()
 
-
+            # Envoyer confirmation à l'utilisateur
+            await self.send(text_data=json.dumps({
+                'type': 'conversation_hidden',
+                'message': f"Vous avez supprimé la conversation '{self.room_name}'."
+            }))
+        elif action == 'mark_read':
+            message_id = data.get('message_id')
+            await self.mark_message_as_read(message_id)
 
     # event handlers (broadcast)
     async def chat_message(self, event):
@@ -246,7 +267,52 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message_id': event['message_id']
         }))
 
+    async def unread_update(self, event):
+        """
+        Envoie les données de messages non lus à chaque client.
+        """
+        await self.send(text_data=json.dumps({
+            'type': 'unread_update',
+            'unread_counts': event['unread_counts']
+        }))
+
     # ---------- DB helpers (sync -> async wrapper) ----------
+    @database_sync_to_async
+    def hide_conversation_for_user(self):
+        if not self.room:
+            return
+        HiddenConversation.objects.update_or_create(
+            user=self.user,
+            room=self.room,
+            defaults={'hidden_at': timezone.now()}
+        )
+
+    @database_sync_to_async
+    def get_unread_messages(self):
+        if not self.room:
+            return []
+        # tous les messages de la room que l'utilisateur n'a pas lus
+        unread_messages = Message.objects.filter(
+            room=self.room
+        ).exclude(
+            reads__user=self.user
+        ).order_by('timestamp')
+        return [
+            {
+                'id': msg.id,
+                'username': msg.user.username,
+                'message': msg.content,
+                'timestamp': msg.timestamp.strftime("%H:%M")
+            }
+            for msg in unread_messages
+        ]
+
+    @database_sync_to_async
+    def mark_message_as_read(self, message_id):
+        msg = Message.objects.filter(id=message_id, room=self.room).first()
+        if msg:
+            MessageRead.objects.get_or_create(user=self.user, message=msg)
+
     @database_sync_to_async
     def get_room(self):
         """
@@ -367,6 +433,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def _delete_message_by_id(self, message_id):
         Message.objects.filter(id=message_id, room=self.room).delete()
 
+    @database_sync_to_async
+    def get_unread_counts_for_room(self):
+        """
+        Renvoie un dict {user_id: unread_count} pour tous les membres de la room
+        """
+        result = {}
+        members = self.room.members.all()
+        for member in members:
+            count = Message.objects.filter(room=self.room).exclude(reads__user=member).count()
+            result[member.id] = count
+        return result
 
 
 class PrivateChatConsumer(AsyncWebsocketConsumer):

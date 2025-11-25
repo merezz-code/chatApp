@@ -456,8 +456,8 @@
 }
 
 .modal-header {
-    background: linear-gradient(135deg, var(--orange-primary), var(--orange-dark));
-    color: white;
+    background: var(--bg-dark);
+    color: black;
     border-bottom: none;
     padding: 20px 24px;
 }
@@ -473,7 +473,7 @@
 
 .modal-body {
     padding: 24px;
-    background-color: var(--bg-chat);
+    background-color: var(--bg-dark);
 }
 
 .modal-body ul {

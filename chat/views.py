@@ -5,10 +5,11 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from .models import Room, Message, PrivateMessage, UserProfile, Block, Report
+from django.views.decorators.http import require_POST, require_http_methods
+from .models import Room, Message, PrivateMessage, UserProfile, Block, Report, HiddenConversation, MessageRead
 from .forms import UserProfileForm
 from django.db.models import Q
+from django.utils import timezone
 
 def register(request):
     """Inscription d'un nouvel utilisateur"""
@@ -59,23 +60,26 @@ def user_logout(request):
 def home(request):
     # Tous les salons existants
     rooms = Room.objects.all().order_by('-created_at')
-    user_rooms = Room.objects.filter(
-        Q(members=request.user)
-    ).distinct().order_by('-created_at')
+    user_rooms = Room.objects.filter(Q(members=request.user)).distinct().order_by('-created_at')
 
-    # Tous les chats privés de l'utilisateur
+    # Préparer rooms_data pour les messages non lus
+    rooms_data = []
+    for room in user_rooms:
+        unread_count = room.unread_count_for_user(request.user)
+        rooms_data.append({
+            'id': room.id,
+            'name': room.name,
+            'unread_count': unread_count
+        })
+
+    # Tous les chats privés
     user_chats = User.objects.filter(id__in=[
         *PrivateMessage.objects.filter(sender=request.user).values_list('receiver_id', flat=True),
         *PrivateMessage.objects.filter(receiver=request.user).values_list('sender_id', flat=True)
     ]).distinct().exclude(id=request.user.id)
 
-    # Utilisateurs disponibles pour commencer un chat
-    users_not_chatted = User.objects.exclude(id=request.user.id)
-
-    # MODIFICATION: Filtrer les conversations masquées (Signalé + Bloqué)
     private_chats = []
     for user in user_chats:
-        # Ne pas inclure les conversations signalées + bloquées
         if not request.user.profile.should_hide_conversation(user):
             unread_count = request.user.profile.unread_private_count(user)
             private_chats.append({
@@ -83,13 +87,17 @@ def home(request):
                 'unread_count': unread_count
             })
 
+    users_not_chatted = User.objects.exclude(id=request.user.id)
+
     context = {
         'rooms': rooms,
         'user_rooms': user_rooms,
+        'rooms_data': rooms_data,  # 🔥 Ajouté ici
         'private_chats': private_chats,
         'users_not_chatted': users_not_chatted,
     }
     return render(request, 'chat/home.html', context)
+
 
 @login_required
 def choose_user_chat(request):
@@ -99,23 +107,27 @@ def choose_user_chat(request):
     users_not_chatted = User.objects.exclude(id=request.user.id)
     return render(request, 'chat/choose_user_chat.html', {'users': users_not_chatted})
 
+
 @login_required
 def room_detail(request, room_name):
     room = Room.objects.filter(name__iexact=room_name).first()
+    hidden = HiddenConversation.objects.filter(user=request.user, room=room).first()
 
-    if request.user not in room.members.all():
-        messages.error(request, "Vous n'êtes pas membre de ce salon.")
-        return redirect('home')
+    if hidden:
+        messages_list = list(
+            Message.objects.filter(room=room, timestamp__gt=hidden.hidden_at)
+            .order_by('timestamp')  # ordre normal
+        )
+    else:
+        messages_list = list(Message.objects.filter(room=room).order_by('timestamp'))
 
-    messages_list = room.messages.all().select_related('user')[:50]
-    membre_contact = User.objects.exclude(id__in=room.members.all())
-    members_list = room.members.all()
+    # Marquer comme lus
+    for msg in messages_list:
+        MessageRead.objects.get_or_create(message=msg, user=request.user)
 
     return render(request, 'chat/room.html', {
         'room': room,
         'messages': messages_list,
-        'membre_contact': membre_contact,
-        'members_list': members_list,
     })
 
 
@@ -516,3 +528,99 @@ def update_profile(request):
     else:
         form = UserProfileForm(instance=profile)
     return render(request, 'base.html', {'form': form, 'user': request.user})
+
+@require_POST
+@login_required
+def hide_conversation(request, room_id):
+    room = get_object_or_404(Room, id=room_id)
+    hidden, created = HiddenConversation.objects.update_or_create(
+        user=request.user,
+        room=room,
+        defaults={"hidden_at": timezone.now()}
+    )
+    return JsonResponse({"success": True})
+
+
+
+@login_required
+def private_unread_count(request):
+    user = request.user
+    chats = []
+
+    user_chats = User.objects.filter(
+        id__in=[
+            *PrivateMessage.objects.filter(sender=user).values_list('receiver_id', flat=True),
+            *PrivateMessage.objects.filter(receiver=user).values_list('sender_id', flat=True)
+        ]
+    ).distinct().exclude(id=user.id)
+
+    for u in user_chats:
+        unread_count = PrivateMessage.objects.filter(
+            sender=u,
+            receiver=user,
+            is_read=False
+        ).count()
+        chats.append({
+            'id': u.id,
+            'username': u.username,
+            'unread_count': unread_count
+        })
+
+    return JsonResponse({'private_chats': chats})
+
+@login_required
+def rooms_unread_count(request):
+    user = request.user
+    rooms_data = []
+
+    user_rooms = Room.objects.filter(members=user)
+
+    for room in user_rooms:
+        unread_count = room.unread_count_for_user(user)
+        rooms_data.append({
+            'id': room.id,
+            'name': room.name,           # Ajout du nom pour les notifications
+            'unread_count': unread_count
+        })
+
+    return JsonResponse({'rooms': rooms_data})
+
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_private_chat(request, user_id):
+    try:
+        other_user = User.objects.get(id=user_id)
+
+        # Supprimer tous les messages dans les deux sens
+        PrivateMessage.objects.filter(
+            sender=request.user,
+            receiver=other_user
+        ).delete()
+
+        PrivateMessage.objects.filter(
+            sender=other_user,
+            receiver=request.user
+        ).delete()
+
+        return JsonResponse({"status": "success"})
+
+    except User.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Utilisateur introuvable"}, status=404)
+
+@login_required
+def private_unread_count(request):
+    user = request.user
+    data = []
+    private_chats = PrivateMessage.objects.filter(receiver=user).select_related("sender")
+
+    unread_map = {}
+    for msg in private_chats.filter(is_read=False):
+        unread_map[msg.sender.id] = unread_map.get(msg.sender.id, 0) + 1
+
+    for user_id, count in unread_map.items():
+        data.append({"user_id": user_id, "count": count})
+
+    return JsonResponse({"private_unread": data})
+

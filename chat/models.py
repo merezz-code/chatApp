@@ -23,6 +23,8 @@ class Room(models.Model):
     def get_online_count(self):
         return self.members.count()
 
+    def unread_count_for_user(self, user):
+        return Message.objects.filter(room=self, reads__user__isnull=True).exclude(reads__user=user).count()
 
 class Message(models.Model):
     """Message dans un salon de discussion"""
@@ -186,3 +188,16 @@ class Report(models.Model):
 
     def __str__(self):
         return f'{self.reporter.username} signale {self.reported_user.username} - {self.get_reason_display()}'
+
+class MessageRead(models.Model):
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='reads')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    read_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('message', 'user')
+
+class HiddenConversation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE)
+    hidden_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)

@@ -10,6 +10,7 @@ path('', views.welcome, name='welcome'),
     path('room/create/', views.create_room, name='create_room'),
     path('room/<str:room_name>/', views.room_detail, name='room_detail'),
     path("room/<str:room_name>/join/", views.join_room, name="join_room"),
+    path('private/unread-count/', views.private_unread_count, name='private_unread_count'),
     path('private/<str:username>/', views.private_chat, name='private_chat'),
     path('upload/', views.upload_file, name='upload_file'),
     path('chat/new/', views.choose_user_chat, name='choose_user_chat'),
@@ -26,5 +27,8 @@ path('', views.welcome, name='welcome'),
     # Vérifier le statut de blocage (API)
     path('check-block-status/<str:username>/', views.check_block_status, name='check_block_status'),
     path('profile/update/', views.update_profile, name='update_profile'),
+    path('hide/<int:room_id>/', views.hide_conversation, name='hide_conversation'),
+    path('rooms/unread-count/', views.rooms_unread_count, name='rooms_unread_count'),
 
+    path('private/delete/<int:user_id>/', views.delete_private_chat, name='delete_private_chat'),
 ]
