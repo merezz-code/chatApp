@@ -213,16 +213,27 @@ function showNotification(message){
     notif.classList.remove('hidden');
     setTimeout(()=>notif.classList.add('hidden'),5000);
 }
-
+let prevTotalUnread=0;
 function updateTotalUnreadCount(){
-    let total=0;
-    document.querySelectorAll('.private-unread-badge, .group-unread-badge').forEach(b=>{
-        total += parseInt(b.textContent)||0;
+    let total = 0;
+
+    document.querySelectorAll('.private-unread-badge, .group-unread-badge').forEach(b => {
+        total += parseInt(b.textContent) || 0;
     });
-    const totalBadge=document.getElementById('total-unread-badge');
-    totalBadge.textContent = total>0?total:'';
-    totalBadge.style.display=total>0?'inline-block':'none';
+
+    const totalBadge = document.getElementById('total-unread-badge');
+    totalBadge.textContent = total > 0 ? total : '';
+    totalBadge.style.display = total > 0 ? 'inline-block' : 'none';
+
+    // 🔔 Notification unique si augmentation du total
+    if (total > prevTotalUnread) {
+        playNotificationSound();
+        showNotification(`Vous avez ${total} messages non lus`);
+    }
+
+    prevTotalUnread = total;
 }
+
 
 /* ================== UNREAD PRIVÉS ================== */
 let prevPrivateUnread = {};
@@ -242,7 +253,7 @@ function refreshPrivateUnread(){
                 meta.appendChild(badge);
                 if(!prevPrivateUnread[item.user_id] || item.count>prevPrivateUnread[item.user_id]){
                     playNotificationSound();
-                    showNotification(`Nouveaux messages (${item.count})`);
+                    updateTotalUnreadCount();
                 }
             }
             prevPrivateUnread[item.user_id]=item.count;
@@ -290,7 +301,7 @@ function refreshGroupUnread(){
             // Notification + son seulement si augmentation
             if (newCount > oldCount) {
                 playNotificationSound();
-                showNotification(`Nouveaux messages dans ${item.name} (${newCount})`);
+                updateTotalUnreadCount();
             }
 
             prevGroupUnread[item.id] = newCount;

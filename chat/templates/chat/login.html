@@ -13,6 +13,16 @@
             <h2>Connexion</h2>
             <p>Bienvenue sur ChatApp</p>
         </div>
+        {% if messages %}
+            <div class="messages-container mt-2">
+                {% for message in messages %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
         
         <form method="post">
             {% csrf_token %}
