@@ -8,8 +8,11 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_http_methods
 from .models import Room, Message, PrivateMessage, UserProfile, Block, Report, HiddenConversation, MessageRead
 from .forms import UserProfileForm
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.utils import timezone
+
+
+
 
 def register(request):
     """Inscription d'un nouvel utilisateur"""
@@ -58,9 +61,15 @@ def user_logout(request):
 
 @login_required
 def home(request):
-    # Tous les salons existants
-    rooms = Room.objects.all().order_by('-created_at')
-    user_rooms = Room.objects.filter(Q(members=request.user)).distinct().order_by('-created_at')
+    # -------------------------
+    # Salons (Rooms)
+    # -------------------------
+    user_rooms = Room.objects.filter(members=request.user).distinct()
+
+    # Ajouter le timestamp du dernier message dans chaque room
+    user_rooms = user_rooms.annotate(
+        last_message_time=Max('messages__timestamp')
+    ).order_by('-last_message_time')  # trie par dernier message reçu/envoi
 
     # Préparer rooms_data pour les messages non lus
     rooms_data = []
@@ -72,27 +81,46 @@ def home(request):
             'unread_count': unread_count
         })
 
-    # Tous les chats privés
-    user_chats = User.objects.filter(id__in=[
-        *PrivateMessage.objects.filter(sender=request.user).values_list('receiver_id', flat=True),
-        *PrivateMessage.objects.filter(receiver=request.user).values_list('sender_id', flat=True)
-    ]).distinct().exclude(id=request.user.id)
+    # -------------------------
+    # Chats privés
+    # -------------------------
+    # Récupérer tous les utilisateurs avec qui il y a eu un échange
+    user_chats = User.objects.filter(
+        id__in=[
+            *PrivateMessage.objects.filter(sender=request.user).values_list('receiver_id', flat=True),
+            *PrivateMessage.objects.filter(receiver=request.user).values_list('sender_id', flat=True)
+        ]
+    ).distinct().exclude(id=request.user.id)
 
     private_chats = []
     for user in user_chats:
         if not request.user.profile.should_hide_conversation(user):
             unread_count = request.user.profile.unread_private_count(user)
+
+            # Récupérer le dernier message entre les deux
+            last_msg = PrivateMessage.objects.filter(
+                Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user)
+            ).order_by('-timestamp').first()
+
             private_chats.append({
                 'user': user,
-                'unread_count': unread_count
+                'unread_count': unread_count,
+                'last_message_time': last_msg.timestamp if last_msg else None
             })
 
+    # Trier les chats privés par dernier message
+    private_chats.sort(key=lambda x: x['last_message_time'] or 0, reverse=True)
+
+    # -------------------------
+    # Tous les salons disponibles (pour modal)
+    # -------------------------
+    rooms = Room.objects.all().order_by('-created_at')
     users_not_chatted = User.objects.exclude(id=request.user.id)
 
     context = {
         'rooms': rooms,
         'user_rooms': user_rooms,
-        'rooms_data': rooms_data,  # 🔥 Ajouté ici
+        'rooms_data': rooms_data,
         'private_chats': private_chats,
         'users_not_chatted': users_not_chatted,
     }
@@ -113,6 +141,7 @@ def room_detail(request, room_name):
     room = Room.objects.filter(name__iexact=room_name).first()
     hidden = HiddenConversation.objects.filter(user=request.user, room=room).first()
 
+    # Récupération des messages
     if hidden:
         messages_list = list(
             Message.objects.filter(room=room, timestamp__gt=hidden.hidden_at)
@@ -125,10 +154,27 @@ def room_detail(request, room_name):
     for msg in messages_list:
         MessageRead.objects.get_or_create(message=msg, user=request.user)
 
-    return render(request, 'chat/room.html', {
+    # -----------------------------
+    # Liste des membres actuels
+    # -----------------------------
+    members_list = room.members.all()
+
+    # -----------------------------
+    # Liste des utilisateurs non membres (disponibles à ajouter)
+    # -----------------------------
+    # Exclut les membres existants + l'utilisateur actuel
+    membre_contact = User.objects.exclude(id__in=members_list.values_list('id', flat=True))\
+                                 .exclude(id=request.user.id)
+
+    context = {
         'room': room,
         'messages': messages_list,
-    })
+        'members_list': members_list,
+        'membre_contact': membre_contact,  # pour modal "Ajouter membre"
+    }
+
+    return render(request, 'chat/room.html', context)
+
 
 
 @login_required
@@ -568,23 +614,26 @@ def private_unread_count(request):
 
     return JsonResponse({'private_chats': chats})
 
-@login_required
+
+from django.http import JsonResponse
+from .models import Room, Message
+
+
 def rooms_unread_count(request):
     user = request.user
     rooms_data = []
 
-    user_rooms = Room.objects.filter(members=user)
-
-    for room in user_rooms:
-        unread_count = room.unread_count_for_user(user)
+    # Récupérer tous les salons que l'utilisateur peut voir
+    rooms = Room.objects.all()  # ou selon ton filtre (par ex: user.rooms.all())
+    for room in rooms:
+        # Compter uniquement les messages non lus pour cet utilisateur
         rooms_data.append({
-            'id': room.id,
-            'name': room.name,           # Ajout du nom pour les notifications
-            'unread_count': unread_count
+            "id": room.id,
+            "name": room.name,
+            "unread_count": room.unread_count_for_user(user)
         })
 
-    return JsonResponse({'rooms': rooms_data})
-
+    return JsonResponse({"rooms": rooms_data})
 
 
 @login_required

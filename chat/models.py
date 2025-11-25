@@ -24,7 +24,12 @@ class Room(models.Model):
         return self.members.count()
 
     def unread_count_for_user(self, user):
-        return Message.objects.filter(room=self, reads__user__isnull=True).exclude(reads__user=user).count()
+        return self.messages.exclude(
+            reads__user=user
+        ).exclude(
+            user=user
+        ).count()
+
 
 class Message(models.Model):
     """Message dans un salon de discussion"""

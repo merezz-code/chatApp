@@ -5,17 +5,20 @@
 
 {% block content %}
 <div class="whatsapp-container">
-    <!-- Sidebar -->
+    <!-- ================= SIDEBAR ================= -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h5><i class="fas fa-comments"></i> Conversations
+            <h5>
+                <i class="fas fa-comments"></i> Conversations
                 <span id="total-unread-badge" class="chat-badge" style="display: none;">0</span>
             </h5>
             <button type="button" class="btn-new-chat" data-bs-toggle="modal" data-bs-target="#sidebarModal">
                 <i class="fas fa-plus-circle"></i>
             </button>
         </div>
+
         <div class="chat-list">
+            <!-- Salons de discussion -->
             <div class="section-divider"><i class="fas fa-hashtag"></i> SALONS DE DISCUSSION</div>
             {% for room in user_rooms %}
             <a href="{% url 'room_detail' room.name %}" class="chat-item">
@@ -35,6 +38,7 @@
             </a>
             {% endfor %}
 
+            <!-- Messages privés -->
             {% if private_chats %}
             <div class="section-divider"><i class="fas fa-user"></i> MESSAGES PRIVÉS</div>
             {% for chat in private_chats %}
@@ -70,7 +74,7 @@
         </div>
     </div>
 
-    <!-- Main content -->
+    <!-- ================= MAIN CONTENT ================= -->
     <div class="main-content">
         <div class="welcome-message">
             <i class="fas fa-comment-dots"></i>
@@ -80,7 +84,8 @@
     </div>
 </div>
 
-<!-- Modales sidebar + delete -->
+<!-- ================= MODALES ================= -->
+<!-- Nouvelle conversation -->
 <div class="modal fade" id="sidebarModal" tabindex="-1" aria-labelledby="sidebarModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-sidebar">
@@ -89,6 +94,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body">
+                <!-- Salons -->
                 <div class="sidebar-header">
                     <h5><i class="fas fa-comments"></i> Salons</h5>
                     <button class="btn-new-chat" onclick="window.location.href='{% url 'create_room' %}'">
@@ -117,6 +123,7 @@
                 </div>
                 {% endif %}
 
+                <!-- Utilisateurs disponibles -->
                 {% if users_not_chatted %}
                 <div class="modal-chat-list mt-2">
                     <div class="section-divider"><i class="fas fa-user"></i> Utilisateurs</div>
@@ -140,6 +147,7 @@
     </div>
 </div>
 
+<!-- Suppression discussion -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg">
@@ -234,7 +242,7 @@ function refreshPrivateUnread(){
                 meta.appendChild(badge);
                 if(!prevPrivateUnread[item.user_id] || item.count>prevPrivateUnread[item.user_id]){
                     playNotificationSound();
-                    showNotification(`Nouveaux messages de ${item.name} (${item.count})`);
+                    showNotification(`Nouveaux messages (${item.count})`);
                 }
             }
             prevPrivateUnread[item.user_id]=item.count;
@@ -244,25 +252,54 @@ function refreshPrivateUnread(){
 }
 
 /* ================== UNREAD GROUPES ================== */
-let prevGroupUnread={};
-function refreshGroupUnread(){
-    fetch("/rooms/unread-count/").then(res=>res.json()).then(data=>{
-        data.rooms.forEach(item=>{
-            const badge=document.getElementById(`room-badge-${item.id}`);
-            if(!badge) return;
-            badge.textContent=item.unread_count>0?item.unread_count:'';
-            badge.style.display=item.unread_count>0?'block':'none';
-            if(!prevGroupUnread[item.id]) prevGroupUnread[item.id]=0;
-            if(item.unread_count>prevGroupUnread[item.id]){
-                playNotificationSound();
-                showNotification(`Nouveaux messages dans ${item.name} (${item.unread_count})`);
-            }
-            prevGroupUnread[item.id]=item.unread_count;
-        });
-        updateTotalUnreadCount();
-    }).catch(console.error);
-}
+/* ================== UNREAD GROUPES (CORRIGÉE – SEULE PARTIE MODIFIÉE) ================== */
+let prevGroupUnread = {};
 
+function refreshGroupUnread(){
+    fetch("/rooms/unread-count/")
+    .then(res => res.json())
+    .then(data => {
+        data.rooms.forEach(item => {
+            // On cherche le <a class="chat-item"> du salon
+            const chatItemLink = document.querySelector(`a.chat-item[href*="${item.name}"]`);
+            if (!chatItemLink) return;
+
+            const metaDiv = chatItemLink.querySelector('.chat-meta');
+
+            // On cherche OU crée le badge s'il n'existe pas encore
+            let badge = metaDiv.querySelector('.group-unread-badge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'chat-badge group-unread-badge';
+                badge.id = `room-badge-${item.id}`;
+                metaDiv.appendChild(badge);
+            }
+
+            const oldCount = prevGroupUnread[item.id] ?? 0;
+            const newCount = item.unread_count;
+
+            // Mise à jour du badge (même si c'était 0 avant)
+            if (newCount > 0) {
+                badge.textContent = newCount;
+                badge.style.display = 'block';
+            } else {
+                badge.textContent = '';
+                badge.style.display = 'none';
+            }
+
+            // Notification + son seulement si augmentation
+            if (newCount > oldCount) {
+                playNotificationSound();
+                showNotification(`Nouveaux messages dans ${item.name} (${newCount})`);
+            }
+
+            prevGroupUnread[item.id] = newCount;
+        });
+
+        updateTotalUnreadCount();
+    })
+    .catch(console.error);
+}
 /* ================== REFRESH ================== */
 setInterval(()=>{ refreshPrivateUnread(); refreshGroupUnread(); },3000);
 document.addEventListener('DOMContentLoaded',()=>{ refreshPrivateUnread(); refreshGroupUnread(); updateTotalUnreadCount(); });
@@ -282,7 +319,10 @@ document.addEventListener("click",()=>{ document.querySelectorAll(".menu-dropdow
 /* ================== SUPPRESSION ================== */
 let deletingUserId=null;
 let deletingUsername=null;
-function openDeleteModal(userId,username){ deletingUserId=userId; deletingUsername=username; new bootstrap.Modal(document.getElementById("deleteModal")).show(); }
+function openDeleteModal(userId,username){
+    deletingUserId=userId; deletingUsername=username;
+    new bootstrap.Modal(document.getElementById("deleteModal")).show();
+}
 document.getElementById("confirmDeleteBtn").addEventListener("click",()=>{
     if(!deletingUserId) return;
     fetch(`/private/delete/${deletingUserId}/`,{ method:"DELETE", headers:{"X-CSRFToken":csrftoken} })
@@ -309,7 +349,7 @@ function blockUser(username){
 </script>
 
 <style>
-/* --- Styles conservés --- */
+/* ================== STYLES ================== */
 .chat-item-wrapper { display: flex; align-items: center; border-bottom: 1px solid var(--border-color); position: relative; }
 .chat-item-wrapper a.chat-item { flex: 1; display: flex; align-items: center; gap: 15px; text-decoration: none; color: inherit; min-width: 0; }
 .chat-overflow { width: auto; cursor: pointer; position: relative; padding: 5px; opacity: 0; transition: opacity 0.2s ease; }

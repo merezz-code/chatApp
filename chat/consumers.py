@@ -5,6 +5,7 @@ from django.utils.text import slugify
 from django.contrib.auth.models import User
 from .models import Room, Message, PrivateMessage, Block, MessageRead, HiddenConversation
 from django.utils import timezone
+from django.db.models import Q
 
 
 
@@ -78,7 +79,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             message_content = data.get('message', '').strip()
             if message_content:
                 msg_obj = await self._create_message(message_content)
-                # broadcast nouveau message
+
+                # Broadcast du message
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -89,6 +91,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'timestamp': msg_obj.timestamp.strftime("%H:%M")
                     }
                 )
+
+                # Mise à jour des messages non lus pour chaque membre
                 unread_counts = await self.get_unread_counts_for_room()
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -97,6 +101,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'unread_counts': unread_counts
                     }
                 )
+
 
         elif action == 'remove_member':
             target_username = data.get('username')
@@ -436,12 +441,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_unread_counts_for_room(self):
         """
-        Renvoie un dict {user_id: unread_count} pour tous les membres de la room
+        Renvoie un dict {user_id: unread_count} pour tous les membres de la room,
+        en excluant les messages lus par l'utilisateur ET ceux envoyés par lui-même.
         """
         result = {}
         members = self.room.members.all()
         for member in members:
-            count = Message.objects.filter(room=self.room).exclude(reads__user=member).count()
+            count = Message.objects.filter(room=self.room).exclude(
+                Q(reads__user=member) | Q(user=member)
+            ).count()
             result[member.id] = count
         return result
 
