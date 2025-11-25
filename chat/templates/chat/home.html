@@ -166,6 +166,25 @@
     </div>
 </div>
 
+    <!-- bloquer -->
+<div class="modal fade" id="blockModal" tabindex="-1" aria-labelledby="blockModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title" id="blockModalLabel">Confirmation de block</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Voulez-vous vraiment bloquer cet utilisateur ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Bloquer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Notification toast -->
 <div id="notification" class="notification hidden">
     <div class="notification-icon"><i class="fas fa-check-circle"></i></div>
@@ -195,9 +214,9 @@ function getCookie(name){
 function attemptAudioUnlock(){
     if(audioUnlocked) return;
     audio.volume=0;
-    audio.play().then(()=>{ audio.pause(); audio.currentTime=0; audio.volume=1; audioUnlocked=true; });
-    document.removeEventListener("mousedown", attemptAudioUnlock);
-    document.removeEventListener("touchstart", attemptAudioUnlock);
+    audio.play().then(()=>{
+        audio.pause(); audio.currentTime=0; audio.volume=1; audioUnlocked=true;
+    });
 }
 document.addEventListener("mousedown", attemptAudioUnlock, { once:true });
 document.addEventListener("touchstart", attemptAudioUnlock, { once:true });
@@ -213,24 +232,23 @@ function showNotification(message){
     notif.classList.remove('hidden');
     setTimeout(()=>notif.classList.add('hidden'),5000);
 }
+
+
+/* ================== BADGES NON LUS ================== */
 let prevTotalUnread=0;
 function updateTotalUnreadCount(){
     let total = 0;
-
-    document.querySelectorAll('.private-unread-badge, .group-unread-badge').forEach(b => {
-        total += parseInt(b.textContent) || 0;
-    });
+    document.querySelectorAll('.private-unread-badge, .group-unread-badge')
+        .forEach(b => total += parseInt(b.textContent) || 0);
 
     const totalBadge = document.getElementById('total-unread-badge');
     totalBadge.textContent = total > 0 ? total : '';
     totalBadge.style.display = total > 0 ? 'inline-block' : 'none';
 
-    // 🔔 Notification unique si augmentation du total
     if (total > prevTotalUnread) {
         playNotificationSound();
         showNotification(`Vous avez ${total} messages non lus`);
     }
-
     prevTotalUnread = total;
 }
 
@@ -238,50 +256,61 @@ function updateTotalUnreadCount(){
 /* ================== UNREAD PRIVÉS ================== */
 let prevPrivateUnread = {};
 function refreshPrivateUnread(){
-    fetch("/private/unread-count/").then(res=>res.json()).then(data=>{
+    fetch("/private/unread-count/")
+    .then(res=>res.json())
+    .then(data=>{
         data.private_unread.forEach(item=>{
             const chatItem=document.getElementById(`conversation-${item.user_id}`);
             if(!chatItem) return;
+
             let badge=chatItem.querySelector('.private-unread-badge');
             if(badge) badge.remove();
+
             if(item.count>0){
                 badge=document.createElement('div');
                 badge.className='chat-badge private-unread-badge';
                 badge.textContent=item.count;
-                let meta=chatItem.querySelector('.chat-meta')||chatItem.querySelector('a.chat-item').appendChild(document.createElement('div'));
-                meta.className='chat-meta';
+
+                let meta=chatItem.querySelector('.chat-meta');
+                if(!meta){
+                    meta=document.createElement('div');
+                    meta.className="chat-meta";
+                    chatItem.querySelector('a.chat-item').appendChild(meta);
+                }
                 meta.appendChild(badge);
-                if(!prevPrivateUnread[item.user_id] || item.count>prevPrivateUnread[item.user_id]){
+
+                if(!prevPrivateUnread[item.user_id] || item.count > prevPrivateUnread[item.user_id]){
                     playNotificationSound();
                     updateTotalUnreadCount();
                 }
             }
+
             prevPrivateUnread[item.user_id]=item.count;
         });
+
         updateTotalUnreadCount();
-    }).catch(console.error);
+    })
+    .catch(console.error);
 }
 
+
 /* ================== UNREAD GROUPES ================== */
-/* ================== UNREAD GROUPES (CORRIGÉE – SEULE PARTIE MODIFIÉE) ================== */
 let prevGroupUnread = {};
 
 function refreshGroupUnread(){
     fetch("/rooms/unread-count/")
-    .then(res => res.json())
-    .then(data => {
-        data.rooms.forEach(item => {
-            // On cherche le <a class="chat-item"> du salon
-            const chatItemLink = document.querySelector(`a.chat-item[href*="${item.name}"]`);
-            if (!chatItemLink) return;
+    .then(res=>res.json())
+    .then(data=>{
+        data.rooms.forEach(item=>{
+            const chatItemLink=document.querySelector(`a.chat-item[href*="${item.name}"]`);
+            if(!chatItemLink) return;
 
-            const metaDiv = chatItemLink.querySelector('.chat-meta');
-
-            // On cherche OU crée le badge s'il n'existe pas encore
+            const metaDiv=chatItemLink.querySelector('.chat-meta');
             let badge = metaDiv.querySelector('.group-unread-badge');
-            if (!badge) {
-                badge = document.createElement('div');
-                badge.className = 'chat-badge group-unread-badge';
+
+            if(!badge){
+                badge=document.createElement('div');
+                badge.className='chat-badge group-unread-badge';
                 badge.id = `room-badge-${item.id}`;
                 metaDiv.appendChild(badge);
             }
@@ -289,31 +318,35 @@ function refreshGroupUnread(){
             const oldCount = prevGroupUnread[item.id] ?? 0;
             const newCount = item.unread_count;
 
-            // Mise à jour du badge (même si c'était 0 avant)
-            if (newCount > 0) {
-                badge.textContent = newCount;
-                badge.style.display = 'block';
+            if(newCount > 0){
+                badge.textContent=newCount;
+                badge.style.display='block';
             } else {
-                badge.textContent = '';
-                badge.style.display = 'none';
+                badge.textContent='';
+                badge.style.display='none';
             }
 
-            // Notification + son seulement si augmentation
-            if (newCount > oldCount) {
+            if(newCount > oldCount){
                 playNotificationSound();
                 updateTotalUnreadCount();
             }
 
-            prevGroupUnread[item.id] = newCount;
+            prevGroupUnread[item.id]=newCount;
         });
-
         updateTotalUnreadCount();
     })
     .catch(console.error);
 }
-/* ================== REFRESH ================== */
+
+
+/* ================== AUTO REFRESH ================== */
 setInterval(()=>{ refreshPrivateUnread(); refreshGroupUnread(); },3000);
-document.addEventListener('DOMContentLoaded',()=>{ refreshPrivateUnread(); refreshGroupUnread(); updateTotalUnreadCount(); });
+document.addEventListener("DOMContentLoaded",()=>{
+    refreshPrivateUnread();
+    refreshGroupUnread();
+    updateTotalUnreadCount();
+});
+
 
 /* ================== MENU 3 POINTS ================== */
 document.querySelectorAll(".overflow-btn").forEach(btn=>{
@@ -321,43 +354,72 @@ document.querySelectorAll(".overflow-btn").forEach(btn=>{
         e.stopPropagation();
         const menuId=this.getAttribute("data-menu");
         const menu=document.getElementById(menuId);
-        document.querySelectorAll(".menu-dropdown").forEach(m=>{ if(m!==menu) m.style.display="none"; });
-        menu.style.display=menu.style.display==="block"?"none":"block";
+        document.querySelectorAll(".menu-dropdown").forEach(m=>{
+            if(m!==menu) m.style.display="none";
+        });
+        menu.style.display = menu.style.display==="block" ? "none" : "block";
     });
 });
-document.addEventListener("click",()=>{ document.querySelectorAll(".menu-dropdown").forEach(m=>m.style.display="none"); });
+document.addEventListener("click",()=>{
+    document.querySelectorAll(".menu-dropdown").forEach(m=>m.style.display="none");
+});
 
-/* ================== SUPPRESSION ================== */
+
+/* ================== MODALE : SUPPRESSION ================== */
 let deletingUserId=null;
-let deletingUsername=null;
-function openDeleteModal(userId,username){
-    deletingUserId=userId; deletingUsername=username;
+
+function openDeleteModal(userId){
+    deletingUserId=userId;
     new bootstrap.Modal(document.getElementById("deleteModal")).show();
 }
+
 document.getElementById("confirmDeleteBtn").addEventListener("click",()=>{
     if(!deletingUserId) return;
-    fetch(`/private/delete/${deletingUserId}/`,{ method:"DELETE", headers:{"X-CSRFToken":csrftoken} })
-    .then(res=>res.json()).then(data=>{
+
+    fetch(`/private/delete/${deletingUserId}/`,{
+        method:"DELETE",
+        headers:{ "X-CSRFToken":csrftoken }
+    })
+    .then(res=>res.json())
+    .then(data=>{
         if(data.status==="success"){
             const el=document.getElementById(`conversation-${deletingUserId}`);
             if(el) el.remove();
             bootstrap.Modal.getInstance(document.getElementById("deleteModal")).hide();
-        } else console.log("Erreur: "+data.message);
-    }).catch(()=>console.log("Erreur réseau"));
+            showNotification("Discussion supprimée");
+        }
+    })
+    .catch(()=>console.log("Erreur réseau"));
 });
 
-/* ================== BLOQUER UTILISATEUR ================== */
+
+/* ================== MODALE : BLOQUER ================== */
+let blockingUsername = null;
+
 function blockUser(username){
-    if(!confirm(`Voulez-vous vraiment bloquer ${username} ?`)) return;
-    fetch(`/private/block/${username}/`,{ method:"POST", headers:{"X-CSRFToken":csrftoken} })
-    .then(res=>res.json()).then(data=>{
-        if(data.status==="success"){
-            const el=document.querySelector(`.chat-item-wrapper[data-username="${username}"]`);
-            if(el) el.remove();
-        } else console.log("Erreur: "+data.message);
-    });
+    blockingUsername = username;
+    new bootstrap.Modal(document.getElementById("blockModal")).show();
 }
+
+document.getElementById("confirmBlockBtn").addEventListener("click",()=>{
+    if(!blockingUsername) return;
+
+    fetch(`/private/block/${blockingUsername}/`,{
+        method:"POST",
+        headers:{ "X-CSRFToken":csrftoken }
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(data.status==="success"){
+            const el=document.querySelector(`.chat-item-wrapper[data-username="${blockingUsername}"]`);
+            if(el) el.remove();
+            bootstrap.Modal.getInstance(document.getElementById("blockModal")).hide();
+            showNotification("Utilisateur bloqué");
+        }
+    });
+});
 </script>
+
 
 <style>
 /* ================== STYLES ================== */

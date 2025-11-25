@@ -46,16 +46,13 @@
             <div class="menu-dropdown" id="menuDropdown">
                 <!--  Options de blocage -->
                 {% if is_blocking %}
-                    <div class="menu-item" onclick="unblockUser()">
-                         Débloquer
-                    </div>
+                    <div class="menu-item" onclick="openUnblockModal()">Débloquer</div>
+
                 {% else %}
-                    <div class="menu-item" onclick="blockUser()">
-                         Bloquer
-                    </div>
-                    <div class="menu-item text-danger" onclick="reportAndBlockUser()">
-                       Signaler et Bloquer
-                    </div>
+                    <div class="menu-item" onclick="openBlockModal()">Bloquer</div>
+
+                    <div class="menu-item text-danger" onclick="openReportModal()">Signaler et Bloquer</div>
+
                 {% endif %}
             </div>
         </div>
@@ -261,6 +258,79 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
         </div>
     </div>
+  </div>
+</div>
+<!-- Modal : Block User -->
+<div class="modal fade" id="blockModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Bloquer l'utilisateur</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Voulez-vous vraiment bloquer <strong id="block-username"></strong> ?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-danger" id="blockConfirmBtn">Bloquer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal : Unblock User -->
+<div class="modal fade" id="unblockModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Débloquer l'utilisateur</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Voulez-vous vraiment débloquer <strong id="unblock-username"></strong> ?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-success" id="unblockConfirmBtn">Débloquer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal : Report User -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Signaler l'utilisateur</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Raison du signalement :</label>
+        <select id="reportReason" class="form-select">
+          <option value="spam">Spam</option>
+          <option value="harassment">Harcèlement</option>
+          <option value="inappropriate">Contenu inapproprié</option>
+          <option value="fake">Faux profil</option>
+          <option value="other">Autre</option>
+        </select>
+
+        <label class="form-label mt-3">Description (optionnel) :</label>
+        <textarea id="reportDescription" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-danger" id="reportConfirmBtn">Signaler & Bloquer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast (message success/error) -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:2000">
+  <div id="toastBox" class="toast bg-dark text-white" data-bs-delay="3000">
+    <div class="toast-body" id="toastMessage"></div>
   </div>
 </div>
 
@@ -577,6 +647,93 @@ menuToggle.addEventListener('click',()=>menuDropdown.style.display=menuDropdown.
 document.addEventListener('click', e=>{
     if(!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) menuDropdown.style.display='none';
 });
+function showToast(msg, type="success") {
+    const toast = new bootstrap.Toast(document.getElementById("toastBox"));
+    const box = document.getElementById("toastBox");
+
+    if (type === "error") box.className = "toast bg-danger text-white";
+    else if (type === "warning") box.className = "toast bg-warning text-dark";
+    else box.className = "toast bg-success text-white";
+
+    document.getElementById("toastMessage").innerText = msg;
+    toast.show();
+}
+function openBlockModal() {
+    document.getElementById("block-username").innerText = otherUsername;
+    new bootstrap.Modal(document.getElementById("blockModal")).show();
+}
+
+document.getElementById("blockConfirmBtn").onclick = function () {
+    fetch(`/block/${otherUsername}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success){
+            showToast(data.message);
+            setTimeout(()=>location.reload(), 1000);
+        } else {
+            showToast(data.error, "error");
+        }
+    });
+};
+function openUnblockModal() {
+    document.getElementById("unblock-username").innerText = otherUsername;
+    new bootstrap.Modal(document.getElementById("unblockModal")).show();
+}
+
+document.getElementById("unblockConfirmBtn").onclick = function () {
+    fetch(`/unblock/${otherUsername}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success){
+            showToast(data.message);
+            setTimeout(()=>location.reload(), 1000);
+        } else {
+            showToast(data.error, "error");
+        }
+    });
+};
+function openReportModal() {
+    new bootstrap.Modal(document.getElementById("reportModal")).show();
+}
+
+document.getElementById("reportConfirmBtn").onclick = function () {
+
+    const reason = document.getElementById("reportReason").value;
+    const description = document.getElementById("reportDescription").value;
+
+    fetch(`/report/${otherUsername}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            reason: reason,
+            description: description
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success){
+            showToast("Utilisateur signalé & bloqué");
+            setTimeout(()=>location.reload(), 1000);
+        } else {
+            showToast(data.error, "error");
+        }
+    });
+};
+
 </script>
 
 <style>

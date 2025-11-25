@@ -226,6 +226,52 @@
     </div>
   </div>
 </div>
+<!-- MODAL QUITTER GROUPE -->
+<div class="modal fade" id="leaveGroupModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title">Quitter le groupe</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Voulez-vous vraiment quitter ce salon ?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-danger" id="confirmLeaveGroup">Quitter</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- MODAL RETIRER MEMBRE -->
+<div class="modal fade" id="removeMemberModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title">Retirer un membre</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p id="removeMemberText"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-danger" id="confirmRemoveMember">Retirer</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- TOAST MESSAGE -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="toastMessage" class="toast align-items-center text-bg-primary border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastBody">Message ici</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
 
@@ -323,7 +369,7 @@ function sendMessage(){
                 selectedFile=null;
                 filePreview.innerHTML='';
                 messageInput.value='';
-            }else{alert(data.message);}
+            }else{showToast(data.message);}
         }).catch(err=>console.error(err));
     }else if(messageText && chatSocket.readyState === WebSocket.OPEN){
         chatSocket.send(JSON.stringify({'message':messageText,'action':'message'}));
@@ -426,9 +472,15 @@ chatSocket.onmessage = function(e){
         const countElement = document.getElementById('online-count');
         if(countElement && data.members_data) countElement.textContent = data.members_data.count;
         if(data.members_data) rebuildMemberList(data.members_data.members);
-        if(data.username_removed===username){ alert("Vous avez été retiré du salon."); window.location.href="{% url 'home' %}"; }
+        if(data.username_removed===username){ showToast("Vous avez été retiré du salon."); window.location.href="{% url 'home' %}"; }
     }
-    else if(data.type==='group_left_you'){ alert(data.message); window.location.href="{% url 'home' %}"; }
+    else if(data.type==='group_left_you'){
+    showToast(data.message);
+    setTimeout(() => {
+        window.location.href="{% url 'home' %}";
+    }, 1500);
+}
+
     else if(data.type==='delete_message'){ const msgEl=document.getElementById('msg-'+data.message_id); if(msgEl) msgEl.remove(); }
     else if(data.type==="error"){ afficherModalErreur(data.message); }
     scrollToBottom();
@@ -458,7 +510,7 @@ deleteConversationBtn.addEventListener('click', () => {
         headers: {'X-CSRFToken': '{{ csrf_token }}'},
     }).then(res => res.json())
       .then(data => {
-          if(!data.success) alert('Erreur lors de la suppression');
+          if(!data.success) showToast('Erreur lors de la suppression');
       });
 });
 
@@ -483,6 +535,51 @@ document.getElementById("confirmDeleteBtn").addEventListener("click", () => {
             bootstrap.Modal.getInstance(document.getElementById("deleteModal")).hide();
         }
     });
+});
+function showToast(msg){
+    const toastEl = document.getElementById('toastMessage');
+    document.getElementById('toastBody').textContent = msg;
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+}
+let pendingLeave = false;
+
+function leaveGroup(){
+    pendingLeave = true;
+    const modal = new bootstrap.Modal(document.getElementById('leaveGroupModal'));
+    modal.show();
+}
+
+document.getElementById('confirmLeaveGroup').addEventListener('click', () => {
+    if(chatSocket.readyState === WebSocket.OPEN){
+        chatSocket.send(JSON.stringify({action:'leave_group'}));
+    }
+    pendingLeave = false;
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('leaveGroupModal'));
+    modal.hide();
+});
+let memberToRemove = null;
+
+function removeMember(usernameToRemove){
+    memberToRemove = usernameToRemove;
+    document.getElementById('removeMemberText').textContent =
+        `Voulez-vous retirer ${usernameToRemove} du groupe ?`;
+
+    const modal = new bootstrap.Modal(document.getElementById('removeMemberModal'));
+    modal.show();
+}
+
+document.getElementById('confirmRemoveMember').addEventListener('click', () => {
+    if(chatSocket.readyState === WebSocket.OPEN){
+        chatSocket.send(JSON.stringify({
+            action:'remove_member',
+            username: memberToRemove
+        }));
+    }
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('removeMemberModal'));
+    modal.hide();
 });
 
 </script>
